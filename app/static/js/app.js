@@ -145,11 +145,15 @@ function renderWordList() {
   list.innerHTML = state.vocab.items.map(e => {
     const { lemma, senses } = parseSenses(e.raw);
     const senseRows = senses.map(s => {
-      const frLine = s.examples.map(ex => ex.fr).join(' — ');
-      const nlLine = s.examples.map(ex => ex.nl).filter(Boolean).join(' — ');
+      const label = s.label ? s.label.replace(/^\(|\)$/g, '') : '';
+      const frExamples = s.examples.map(ex => ex.fr).filter(Boolean).join(' — ');
+      const nlExamples = s.examples.map(ex => ex.nl).filter(Boolean).join(' — ');
+      // FR column: just the examples; NL column: translation label · NL examples
+      const frLine = esc(frExamples);
+      const nlLine = [label ? `<strong>${esc(label)}</strong>` : '', esc(nlExamples)].filter(Boolean).join(' · ');
       return `<div class="example-row">
-        <span class="ex-fr">${esc(frLine)}</span>
-        <span class="ex-nl">${esc(nlLine)}</span>
+        <span class="ex-fr">${frLine || '—'}</span>
+        <span class="ex-nl">${nlLine || '—'}</span>
       </div>`;
     }).join('');
     const typeGender = e.word_type
@@ -238,7 +242,7 @@ document.getElementById('btn-load-more').addEventListener('click', () => {
   loadVocabulary(false);
 });
 
-document.getElementById('btn-add-word').addEventListener('click', () => openWordEditModal(null));
+document.getElementById('btn-add-word').addEventListener('click', () => openWordEditView(null));
 document.getElementById('btn-practice-fab').addEventListener('click', () => loadPractice());
 
 /* ── WORD DETAIL VIEW ─────────────────────────────────────────────── */
@@ -335,7 +339,7 @@ document.getElementById('btn-word-delete').addEventListener('click', async () =>
 });
 
 document.getElementById('btn-word-edit').addEventListener('click', () => {
-  openWordEditModal(state.currentEntry);
+  openWordEditView(state.currentEntry);
 });
 
 document.getElementById('btn-word-level').addEventListener('click', async () => {
@@ -351,7 +355,29 @@ document.getElementById('btn-word-level').addEventListener('click', async () => 
   if (lvlBadge) lvlBadge.textContent = `Level ${updated.level}`;
 });
 
-/* ── WORD EDIT MODAL ──────────────────────────────────────────────── */
+/* ── WORD EDIT VIEW ───────────────────────────────────────────────── */
+function makeExampleRemovableRow(fr = '', nl = '') {
+  const wrap = document.createElement('div');
+  wrap.style.cssText = 'display:flex;align-items:center;gap:4px;margin-bottom:4px';
+  const row = document.createElement('div');
+  row.className = 'example-row edit-example-line';
+  row.style.flex = '1';
+  row.innerHTML = `
+    <input class="edit-ex-input ex-fr sense-ex-fr" value="${esc(fr)}" placeholder="FR example…" />
+    <input class="edit-ex-input sense-ex-nl" value="${esc(nl)}" placeholder="NL example…" />`;
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'btn-remove-example';
+  btn.title = 'Remove';
+  btn.textContent = '✕';
+  btn.addEventListener('click', () => {
+    if (wrap.parentElement.querySelectorAll(':scope > div').length > 1) wrap.remove();
+  });
+  wrap.appendChild(row);
+  wrap.appendChild(btn);
+  return wrap;
+}
+
 function renderEditSenses(senses) {
   const container = document.getElementById('edit-senses');
   container.innerHTML = '';
@@ -359,38 +385,76 @@ function renderEditSenses(senses) {
 }
 
 function renderEditSense(container, s, si) {
+  if (si > 0) {
+    const hr = document.createElement('hr');
+    hr.className = 'word-divider';
+    container.appendChild(hr);
+  }
+
   const div = document.createElement('div');
-  div.className = 'edit-sense';
-  div.dataset.si = si;
+  div.className = 'edit-sense-inline';
 
   const labelVal = s.label ? s.label.replace(/^\(|\)$/g, '') : '';
-  const frVal = s.examples.map(e => e.fr).join(' - ');
-  const nlVal = s.examples.map(e => e.nl).filter(Boolean).join(' - ');
 
-  div.innerHTML = `
-    <div class="edit-sense-header">
-      <span class="edit-sense-num">Sense ${si + 1}</span>
-      <button type="button" class="btn-remove-sense" title="Delete sense">✕</button>
-    </div>
-    <label class="edit-sense-field">Translation
-      <input class="sense-translation" value="${esc(labelVal)}" placeholder="e.g. kapseizen, omslaan" />
-    </label>
-    <div class="edit-sense-cols">
-      <label>FR examples <span class="field-hint">(separate with  -  )</span>
-        <input class="sense-fr" value="${esc(frVal)}" placeholder="le bateau a chaviré - …" />
-      </label>
-      <label>NL examples <span class="field-hint">(separate with  -  )</span>
-        <input class="sense-nl" value="${esc(nlVal)}" placeholder="de boot is gekapseisd - …" />
-      </label>
-    </div>`;
+  // sense num + remove
+  const header = document.createElement('div');
+  header.className = 'edit-sense-num-row';
+  const numSpan = document.createElement('span');
+  numSpan.className = 'edit-sense-num';
+  numSpan.textContent = `Sense ${si + 1}`;
+  const removeBtn = document.createElement('button');
+  removeBtn.type = 'button';
+  removeBtn.className = 'btn-remove-sense';
+  removeBtn.textContent = '✕';
+  removeBtn.addEventListener('click', () => {
+    const hr = div.previousElementSibling;
+    if (hr && hr.tagName === 'HR') hr.remove();
+    div.remove();
+    document.querySelectorAll('#edit-senses .edit-sense-inline').forEach((el, i) => {
+      el.querySelector('.edit-sense-num').textContent = `Sense ${i + 1}`;
+    });
+  });
+  header.appendChild(numSpan);
+  header.appendChild(removeBtn);
+  div.appendChild(header);
 
-  div.querySelector('.btn-remove-sense').addEventListener('click', () => div.remove());
+  // translation: FR meaning / NL meaning side by side
+  const transRow = document.createElement('div');
+  transRow.className = 'example-row';
+  transRow.style.marginBottom = '8px';
+  transRow.innerHTML = `
+    <input class="edit-ex-input ex-fr sense-translation-fr" value="" placeholder="FR meaning…" style="font-style:italic" />
+    <input class="edit-ex-input sense-translation" value="${esc(labelVal)}" placeholder="NL translation…" />`;
+  div.appendChild(transRow);
+
+  // column headers
+  const colHeaders = document.createElement('div');
+  colHeaders.className = 'example-row';
+  colHeaders.style.marginBottom = '3px';
+  colHeaders.innerHTML = `<span class="edit-field-label">Example FR</span><span class="edit-field-label">Example NL</span>`;
+  div.appendChild(colHeaders);
+
+  // examples
+  const exContainer = document.createElement('div');
+  exContainer.className = 'edit-sense-examples';
+  const examples = s.examples.length ? s.examples : [{ fr: '', nl: '' }];
+  examples.forEach(ex => exContainer.appendChild(makeExampleRemovableRow(ex.fr, ex.nl)));
+  div.appendChild(exContainer);
+
+  // add example button
+  const addEx = document.createElement('button');
+  addEx.type = 'button';
+  addEx.className = 'btn-add-example';
+  addEx.textContent = '＋ example';
+  addEx.addEventListener('click', () => exContainer.appendChild(makeExampleRemovableRow()));
+  div.appendChild(addEx);
+
   container.appendChild(div);
 }
 
 function addEditSense() {
   const container = document.getElementById('edit-senses');
-  const si = container.querySelectorAll('.edit-sense').length;
+  const si = container.querySelectorAll('.edit-sense-inline').length;
   renderEditSense(container, { label: null, examples: [{ fr: '', nl: '' }] }, si);
 }
 
@@ -405,13 +469,14 @@ function collectRaw(form) {
   const regSuffix = register ? ` (${register})` : '';
   const lemmaTag = tag ? `${lemma} [${tag}]${regSuffix}` : lemma;
 
-  const senseDivs = document.querySelectorAll('#edit-senses .edit-sense');
+  const senseDivs = document.querySelectorAll('#edit-senses .edit-sense-inline');
   const frParts = [], nlParts = [];
 
   senseDivs.forEach((div, i) => {
     const translation = div.querySelector('.sense-translation').value.trim();
-    const frExamples  = div.querySelector('.sense-fr').value.trim();
-    const nlExamples  = div.querySelector('.sense-nl').value.trim();
+    const exRows = [...div.querySelectorAll('.edit-sense-examples > div')];
+    const frExamples = exRows.map(r => r.querySelector('.sense-ex-fr').value.trim()).filter(Boolean).join(' - ');
+    const nlExamples = exRows.map(r => r.querySelector('.sense-ex-nl').value.trim()).filter(Boolean).join(' - ');
 
     const frSense = i === 0
       ? [lemmaTag, frExamples].filter(Boolean).join(' - ')
@@ -427,16 +492,16 @@ function collectRaw(form) {
   return frParts.join(' ** ') + ' / ' + nlParts.join(' ** ');
 }
 
-function openWordEditModal(entry) {
+function openWordEditView(entry) {
   state.editingEntryId = entry ? entry.id : null;
   const form = document.getElementById('form-word-edit');
-  document.getElementById('modal-word-title').textContent = entry ? 'Edit Word' : 'Add Word';
+  document.getElementById('word-edit-title').textContent = entry ? entry.lemma : 'Add Word';
 
-  const fields = ['lemma', 'word_type', 'gender', 'register', 'language', 'category', 'level'];
-  fields.forEach(f => {
+  ['word_type','gender','level','register','language','category'].forEach(f => {
     const el = form.elements[f];
     if (el) el.value = entry ? (entry[f] ?? '') : (f === 'language' ? 'Frans' : f === 'level' ? '1' : '');
   });
+  form.elements['lemma'].value = entry ? entry.lemma : '';
 
   if (entry) {
     const { senses } = parseSenses(entry.raw);
@@ -445,16 +510,27 @@ function openWordEditModal(entry) {
     renderEditSenses([{ label: null, examples: [{ fr: '', nl: '' }] }]);
   }
 
-  document.getElementById('modal-word-edit').style.display = 'flex';
+  document.getElementById('btn-word-edit-delete').style.display = entry ? '' : 'none';
+  showView('word-edit');
 }
 
-function closeWordEditModal() {
-  document.getElementById('modal-word-edit').style.display = 'none';
-}
+document.getElementById('btn-word-edit-back').addEventListener('click', () => {
+  if (state.editingEntryId) showView('word');
+  else loadVocabulary();
+});
 
-document.getElementById('btn-modal-word-close').addEventListener('click', closeWordEditModal);
-document.getElementById('btn-modal-word-cancel').addEventListener('click', closeWordEditModal);
+document.getElementById('btn-word-edit-delete').addEventListener('click', async () => {
+  if (!confirm(`Delete "${state.currentEntry?.lemma}"?`)) return;
+  await api(`/api/entries/${state.editingEntryId}`, { method: 'DELETE' });
+  state.vocab.items = state.vocab.items.filter(i => i.id !== state.editingEntryId);
+  await loadVocabulary();
+});
+
 document.getElementById('btn-add-sense').addEventListener('click', addEditSense);
+
+document.getElementById('btn-word-edit-save').addEventListener('click', () => {
+  document.getElementById('form-word-edit').requestSubmit();
+});
 
 document.getElementById('form-word-edit').addEventListener('submit', async e => {
   e.preventDefault();
@@ -474,12 +550,10 @@ document.getElementById('form-word-edit').addEventListener('submit', async e => 
     if (idx !== -1) state.vocab.items[idx] = saved;
     renderWordList();
     state.currentEntry = saved;
-    closeWordEditModal();
     openWordView(saved.id, state.backView);
   } else {
     saved = await api('/api/entries', { method: 'POST', body: JSON.stringify(body) });
     if (!saved) return;
-    closeWordEditModal();
     await loadVocabulary();
   }
 });

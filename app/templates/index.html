@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>FransApp</title>
-  <link rel="stylesheet" href="/static/css/style.css?v=9" />
+  <link rel="stylesheet" href="/static/css/style.css?v=12" />
 </head>
 <body>
 
@@ -88,63 +88,55 @@
     </div>
   </section>
 
-  <!-- WORD EDIT MODAL -->
-  <div class="modal-backdrop" id="modal-word-edit" style="display:none">
-    <div class="modal">
-      <div class="modal-header">
-        <h2 id="modal-word-title">Edit Word</h2>
-        <button class="icon-btn" id="btn-modal-word-close">✕</button>
+  <!-- WORD EDIT VIEW -->
+  <section class="view" id="view-word-edit">
+    <header class="topbar">
+      <button class="icon-btn" id="btn-word-edit-back">← Back</button>
+      <div class="topbar-title" id="word-edit-title">Edit Word</div>
+      <button class="icon-btn btn-primary-text" id="btn-word-edit-save">Save</button>
+    </header>
+    <form id="form-word-edit">
+      <div class="edit-meta-bar">
+        <select name="word_type" class="edit-meta-select edit-meta-type">
+          <option value="">— type</option>
+          <option value="noun">noun</option>
+          <option value="verb">verb</option>
+          <option value="adjective">adjective</option>
+          <option value="adverb">adverb</option>
+          <option value="expression">expression</option>
+        </select>
+        <select name="gender" class="edit-meta-select edit-meta-type">
+          <option value="">— gender</option>
+          <option value="m">m</option>
+          <option value="f">f</option>
+          <option value="m/f">m/f</option>
+        </select>
+        <select name="level" class="edit-meta-select edit-meta-level">
+          <option value="1">L1</option>
+          <option value="2">L2</option>
+          <option value="3">L3</option>
+          <option value="4">L4</option>
+          <option value="5">L5</option>
+        </select>
+        <input name="register" class="edit-meta-select edit-meta-reg" placeholder="register…" />
+        <input name="language" class="edit-meta-select edit-meta-lang" placeholder="language" />
+        <input name="category" class="edit-meta-select edit-meta-cat" placeholder="category…" />
       </div>
-      <form id="form-word-edit" class="form-grid">
-
-        <div class="form-section-label">WORD</div>
-        <div class="form-row">
-          <label>Lemma<input name="lemma" required placeholder="e.g. chavirer" /></label>
-          <label>Type
-            <select name="word_type">
-              <option value="">—</option>
-              <option value="noun">noun</option>
-              <option value="verb">verb</option>
-              <option value="adjective">adjective</option>
-              <option value="adverb">adverb</option>
-              <option value="expression">expression</option>
-            </select>
-          </label>
-          <label>Gender
-            <select name="gender">
-              <option value="">—</option>
-              <option value="m">m</option>
-              <option value="f">f</option>
-              <option value="m/f">m/f</option>
-            </select>
-          </label>
-          <label>Register<input name="register" placeholder="fam, soutenu…" /></label>
+      <div class="word-list">
+        <div class="word-card-row" style="cursor:default">
+          <div class="word-card-header" style="margin-bottom:10px">
+            <input name="lemma" class="edit-lemma-input" required placeholder="lemma…" />
+          </div>
+          <div id="edit-senses"></div>
+          <button type="button" class="btn-add-sense" id="btn-add-sense">＋ Add sense</button>
         </div>
-        <div class="form-row">
-          <label>Language<input name="language" value="Frans" /></label>
-          <label>Category<input name="category" /></label>
-          <label>Level
-            <select name="level">
-              <option value="1">1</option>
-              <option value="2">2</option>
-              <option value="3">3</option>
-              <option value="4">4</option>
-              <option value="5">5</option>
-            </select>
-          </label>
-        </div>
-
-        <div class="form-section-label">SENSES</div>
-        <div id="edit-senses"></div>
-        <button type="button" class="btn-add-sense" id="btn-add-sense">＋ Add sense</button>
-
-        <div class="form-actions">
-          <button type="button" class="btn-secondary" id="btn-modal-word-cancel">Cancel</button>
-          <button type="submit" class="btn-primary">Save</button>
-        </div>
-      </form>
-    </div>
-  </div>
+      </div>
+      <div class="edit-word-actions">
+        <button type="button" class="action-btn danger" id="btn-word-edit-delete" style="display:none">🗑 Delete word</button>
+        <button type="submit" class="btn-primary" style="margin-left:auto">Save</button>
+      </div>
+    </form>
+  </section>
 
   <!-- LANGUAGES VIEW -->
   <section class="view" id="view-languages">
@@ -342,6 +334,6 @@
 
 </div><!-- /layout -->
 
-<script src="/static/js/app.js?v=9"></script>
+<script src="/static/js/app.js?v=12"></script>
 </body>
 </html>
