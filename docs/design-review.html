@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>FransApp — Design Review</title>
+<style>
+/* ── Shared app variables & reset ── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg:#eef3f8; --surface:#fff; --surface2:#f5f8fc;
+  --primary:#4a7fa5; --primary-dk:#335f7e; --primary-lt:#d0e4f0;
+  --accent:#5b9ec9; --text:#1a1a2e; --text-muted:#6b7c93; --text-light:#9baebf;
+  --danger:#d94f4f; --success:#3a9f6e; --border:#dce6ef;
+  --radius:14px; --radius-sm:8px;
+  --shadow:0 2px 12px rgba(74,127,165,.12); --shadow-md:0 4px 24px rgba(74,127,165,.18);
+}
+body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; background:#c8d8e8; color:var(--text); font-size:15px; line-height:1.5; padding:40px 24px 80px; }
+
+/* ── Review chrome ── */
+.page-title { font-size:28px; font-weight:800; color:#1a1a2e; margin-bottom:6px; }
+.page-sub   { font-size:15px; color:#6b7c93; margin-bottom:40px; }
+.section-heading { font-size:11px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:#6b7c93; margin:48px 0 16px; border-top:1px solid #b0c4d4; padding-top:16px; }
+.screens { display:flex; gap:24px; flex-wrap:wrap; align-items:flex-start; }
+
+/* ── Phone frame ── */
+.screen {
+  background:var(--surface);
+  border-radius:20px;
+  overflow:hidden;
+  box-shadow:0 8px 40px rgba(0,0,0,.18);
+  width:360px;
+  flex-shrink:0;
+}
+.screen-label {
+  background:#1a1a2e;
+  color:#fff;
+  font-size:11px;
+  font-weight:700;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+  padding:8px 16px;
+}
+
+/* ── Topbar ── */
+.topbar { display:flex; align-items:center; justify-content:space-between; height:58px; padding:0 16px; background:var(--surface); border-bottom:1px solid var(--border); }
+.topbar-title { font-size:17px; font-weight:700; flex:1; text-align:center; }
+.icon-btn { background:none; border:none; font-size:16px; color:var(--primary); padding:6px 8px; border-radius:var(--radius-sm); min-width:44px; text-align:center; cursor:default; }
+.btn-primary-text { color:var(--primary); font-weight:600; font-size:14px; }
+.btn-danger-text  { color:var(--danger);  font-weight:600; font-size:14px; }
+
+/* ── Search + filter ── */
+.search-bar-wrap { padding:12px 16px 8px; background:var(--surface); border-bottom:1px solid var(--border); }
+.search-input { width:100%; padding:9px 16px; border:none; border-radius:24px; background:var(--bg); font-size:14px; color:var(--text-muted); }
+.filter-bar { display:flex; align-items:center; gap:8px; padding:8px 16px; background:var(--surface); border-bottom:1px solid var(--border); flex-wrap:wrap; }
+.filter-select { padding:4px 10px; border:1px solid var(--border); border-radius:20px; background:var(--bg); font-size:12px; color:var(--text); }
+.pill-bar { display:flex; gap:5px; }
+.pill { padding:3px 10px; border-radius:20px; border:1.5px solid var(--border); background:var(--bg); font-size:12px; font-weight:500; color:var(--text-muted); }
+.pill.active { background:var(--primary); border-color:var(--primary); color:#fff; }
+
+/* ── Word list ── */
+.word-list { padding:10px 14px; display:flex; flex-direction:column; gap:9px; background:var(--bg); }
+.word-card-row { background:var(--surface); border-radius:var(--radius); padding:12px 14px; box-shadow:var(--shadow); }
+.word-card-header { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:5px; }
+.word-lemma-header { font-size:15px; font-weight:700; color:var(--text); }
+.badge { font-size:10px; padding:2px 7px; border-radius:10px; font-weight:500; }
+.badge-level { background:var(--primary-lt); color:var(--primary-dk); }
+.badge-type  { background:#e8f5e9; color:#2e7d45; }
+.badge-reg   { background:#fef3e2; color:#b06000; }
+.badge-cat   { background:#f0e8ff; color:#6a35c0; }
+.badge-fav   { background:#fff0e6; color:#c0601a; }
+.badge-stat  { background:#f0f4f8; color:var(--text-muted); }
+.example-row { display:flex; gap:10px; margin-bottom:2px; align-items:baseline; }
+.ex-fr { flex:1; font-size:13px; color:var(--text); }
+.ex-nl { flex:1; font-size:12px; color:var(--text-muted); }
+.word-divider { border:none; border-top:1px solid var(--border); margin:10px 0; }
+
+/* ── Word detail ── */
+.word-card-wrap { padding:20px 16px 12px; background:var(--bg); }
+.word-card { background:var(--surface); border-radius:var(--radius); box-shadow:var(--shadow-md); padding:22px 20px; }
+.word-lemma { font-size:20px; font-weight:800; text-align:center; margin-bottom:14px; }
+.detail-sense .example-row { justify-content:center; }
+.detail-sense .ex-fr { text-align:center; font-size:15px; }
+.detail-sense .ex-nl { text-align:center; font-size:13px; }
+.word-meta { padding:10px 16px 8px; display:flex; gap:5px; flex-wrap:wrap; justify-content:center; }
+.word-actions { display:flex; gap:8px; padding:8px 16px 16px; justify-content:center; flex-wrap:wrap; }
+.action-btn { padding:8px 18px; border:1.5px solid var(--border); border-radius:24px; background:var(--surface); font-size:13px; color:var(--text); font-weight:500; }
+
+/* ── Languages ── */
+.lang-section-header { font-size:11px; font-weight:700; letter-spacing:.08em; color:var(--text-muted); padding:12px 18px 5px; background:var(--surface2); text-transform:uppercase; }
+.lang-list { background:var(--surface); }
+.lang-row { display:flex; align-items:center; gap:12px; padding:13px 18px; border-bottom:1px solid var(--border); }
+.lang-icon { font-size:18px; width:26px; text-align:center; }
+.lang-name { flex:1; font-size:15px; font-weight:500; }
+.lang-count { font-size:13px; color:var(--text-muted); }
+.lang-sub { padding-left:46px !important; }
+
+/* ── Practice ── */
+.practice-body { padding:14px; background:var(--bg); }
+.lesson-row { background:var(--surface); border-radius:var(--radius); padding:13px 16px; display:flex; align-items:center; gap:12px; box-shadow:var(--shadow); margin-bottom:9px; }
+.lesson-icon { width:40px; height:40px; border-radius:50%; background:var(--primary); display:flex; align-items:center; justify-content:center; font-size:18px; color:#fff; flex-shrink:0; }
+.lesson-info { flex:1; min-width:0; }
+.lesson-name { font-weight:600; font-size:15px; }
+.lesson-desc { font-size:12px; color:var(--text-muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.lesson-actions { display:flex; gap:5px; }
+.lesson-btn { background:none; border:none; font-size:15px; color:var(--text-muted); padding:3px 5px; }
+.btn-add-lesson { width:100%; padding:12px; border:2px dashed var(--border); border-radius:var(--radius); background:transparent; font-size:14px; color:var(--primary); font-weight:500; text-align:center; }
+
+/* ── Session ── */
+.session-body { padding:20px 16px; background:var(--bg); display:flex; flex-direction:column; align-items:center; gap:16px; }
+.session-card { background:var(--surface); border-radius:var(--radius); box-shadow:var(--shadow-md); width:100%; min-height:240px; display:flex; flex-direction:column; }
+.session-card-inner { padding:24px 20px; display:flex; flex-direction:column; align-items:center; gap:14px; min-height:240px; justify-content:center; }
+.card-num { align-self:flex-start; font-size:12px; color:var(--text-light); font-weight:600; }
+.question-text { font-size:18px; font-weight:600; text-align:center; line-height:1.55; }
+.answer-divider { width:100%; border:none; border-top:1px solid var(--border); }
+.answer-text { font-size:16px; color:var(--text-muted); text-align:center; line-height:1.55; }
+.btn-show-answer { padding:10px 30px; border-radius:28px; background:var(--primary); color:#fff; border:none; font-size:15px; font-weight:600; }
+.swipe-hint { display:flex; justify-content:space-between; width:100%; font-size:15px; font-weight:600; padding:0 4px; }
+.hint-wrong { color:var(--danger); }
+.hint-right { color:var(--success); }
+.swipe-buttons { display:flex; gap:12px; width:100%; }
+.btn-wrong { flex:1; padding:12px; border-radius:28px; border:none; font-size:15px; font-weight:700; background:#fdeaea; color:var(--danger); }
+.btn-right { flex:1; padding:12px; border-radius:28px; border:none; font-size:15px; font-weight:700; background:#e8f5ee; color:var(--success); }
+
+/* ── Results ── */
+.results-body { padding:16px; background:var(--bg); }
+.results-score { background:var(--surface); border-radius:var(--radius); padding:22px 20px; display:flex; align-items:center; gap:20px; box-shadow:var(--shadow); margin-bottom:12px; }
+.score-pct { font-size:44px; font-weight:800; color:var(--primary); min-width:80px; }
+.score-right { color:var(--success); font-size:15px; font-weight:500; }
+.score-wrong { color:var(--danger);  font-size:15px; font-weight:500; }
+.results-actions { display:flex; gap:8px; margin-bottom:16px; }
+.btn-result-action { flex:1; padding:11px 12px; border:1.5px solid var(--border); border-radius:24px; background:var(--surface); font-size:13px; font-weight:600; color:var(--primary); text-align:center; }
+.wrong-words-list { background:var(--surface); border-radius:var(--radius); overflow:hidden; }
+.wrong-word-row { padding:10px 14px; border-bottom:1px solid var(--border); font-size:13px; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.wrong-word-row:last-child { border-bottom:none; }
+
+/* ── Create lesson modal (shown inline) ── */
+.modal { background:var(--surface); border-radius:var(--radius); overflow:hidden; box-shadow:var(--shadow-md); }
+.modal-header { display:flex; align-items:center; justify-content:space-between; padding:16px 18px 12px; border-bottom:1px solid var(--border); }
+.modal-header h2 { font-size:16px; font-weight:700; }
+.form-grid { padding:14px 18px; display:flex; flex-direction:column; gap:12px; }
+.form-grid label { display:flex; flex-direction:column; gap:4px; font-size:11px; font-weight:600; color:var(--text-muted); text-transform:uppercase; letter-spacing:.05em; }
+.form-grid input, .form-grid select { padding:8px 10px; border:1.5px solid var(--border); border-radius:var(--radius-sm); font-size:14px; color:var(--text); background:var(--bg); font-family:inherit; width:100%; }
+.form-row { display:flex; gap:8px; }
+.form-row > label { flex:1; }
+.form-section-label { font-size:11px; font-weight:700; color:var(--text-muted); letter-spacing:.08em; text-transform:uppercase; padding:4px 0 2px; border-top:1px solid var(--border); margin-top:2px; }
+.form-field-row { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+.field-label { font-size:14px; font-weight:500; color:var(--text); min-width:56px; }
+.toggle-mock { width:40px; height:24px; background:var(--border); border-radius:12px; position:relative; flex-shrink:0; }
+.toggle-mock::after { content:''; position:absolute; top:2px; left:2px; width:20px; height:20px; border-radius:50%; background:#fff; box-shadow:0 1px 3px rgba(0,0,0,.2); }
+.form-actions { display:flex; gap:8px; justify-content:flex-end; padding-top:4px; }
+.btn-primary { padding:9px 20px; background:var(--primary); color:#fff; border:none; border-radius:24px; font-size:14px; font-weight:600; }
+.btn-secondary { padding:9px 20px; background:var(--bg); color:var(--text); border:1.5px solid var(--border); border-radius:24px; font-size:14px; font-weight:500; }
+
+/* ── Edit sense ── */
+.edit-sense { border:1.5px solid var(--border); border-radius:var(--radius-sm); padding:10px; margin-bottom:8px; background:var(--surface2); }
+.edit-sense-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; }
+.edit-sense-num { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--text-muted); }
+.btn-remove-sense { background:none; border:none; font-size:13px; color:var(--text-muted); padding:2px 5px; border-radius:4px; }
+.edit-sense-field { display:flex; flex-direction:column; gap:3px; margin-bottom:7px; font-size:11px; font-weight:600; color:var(--text-muted); text-transform:uppercase; letter-spacing:.05em; }
+.edit-sense-field input { font-size:13px; padding:6px 9px; border:1.5px solid var(--border); border-radius:var(--radius-sm); background:var(--surface); width:100%; }
+.edit-sense-cols { display:flex; gap:8px; }
+.edit-sense-cols > label { flex:1; display:flex; flex-direction:column; gap:3px; font-size:11px; font-weight:600; color:var(--text-muted); text-transform:uppercase; letter-spacing:.05em; }
+.edit-sense-cols input { font-size:13px; padding:6px 9px; border:1.5px solid var(--border); border-radius:var(--radius-sm); background:var(--surface); width:100%; }
+.field-hint { font-weight:400; text-transform:none; letter-spacing:0; font-size:10px; color:var(--text-light); }
+.btn-add-sense { width:100%; padding:8px; border:1.5px dashed var(--border); border-radius:var(--radius-sm); background:transparent; font-size:13px; color:var(--primary); font-weight:500; text-align:center; }
+</style>
+</head>
+<body>
+
+<div class="page-title">FransApp — Design Review</div>
+<div class="page-sub">Static mockup of all views · May 2026</div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<div class="section-heading">1 · Vocabulary — word list</div>
+<div class="screens">
+
+  <div class="screen">
+    <div class="screen-label">1a · Overview</div>
+    <div class="topbar">
+      <div class="icon-btn">☰</div>
+      <div class="topbar-title">All Words</div>
+      <div class="icon-btn btn-primary-text">+ Add</div>
+    </div>
+    <div class="search-bar-wrap">
+      <div class="search-input">🔍  Search words…</div>
+    </div>
+    <div class="filter-bar">
+      <select class="filter-select"><option>All languages</option></select>
+      <select class="filter-select"><option>All categories</option></select>
+      <div class="pill-bar">
+        <div class="pill active">All</div>
+        <div class="pill">1</div><div class="pill">2</div><div class="pill">3</div>
+        <div class="pill">4</div><div class="pill">5</div>
+      </div>
+    </div>
+    <div class="word-list">
+
+      <div class="word-card-row">
+        <div class="word-card-header">
+          <span class="word-lemma-header">chavirer [v]</span>
+          <span class="badge badge-level">L1</span>
+          <span class="badge badge-type">verb</span>
+        </div>
+        <div class="example-row">
+          <span class="ex-fr">le bateau a chaviré</span>
+          <span class="ex-nl">(kapseizen, omslaan) - de boot is gekapseisd</span>
+        </div>
+        <div class="example-row">
+          <span class="ex-fr">son cœur a chaviré en la voyant</span>
+          <span class="ex-nl">(ontroerd raken) - zijn hart sloeg over toen hij haar zag</span>
+        </div>
+      </div>
+
+      <div class="word-card-row">
+        <div class="word-card-header">
+          <span class="word-lemma-header">nerf [m]</span>
+          <span class="badge badge-level">L2</span>
+          <span class="badge badge-type">noun</span>
+        </div>
+        <div class="example-row">
+          <span class="ex-fr">avoir les __s à fleur de peau - taper sur les __s de quelqu'un</span>
+          <span class="ex-nl">(zenuw, irritatie) - de zenuwen tot het uiterste gespannen - iemand op de zenuwen werken</span>
+        </div>
+        <div class="example-row">
+          <span class="ex-fr">ce cheval a du __</span>
+          <span class="ex-nl">(pit, kracht) - dat paard heeft pit</span>
+        </div>
+      </div>
+
+      <div class="word-card-row">
+        <div class="word-card-header">
+          <span class="word-lemma-header">itou [adv] (fam)</span>
+          <span class="badge badge-level">L2</span>
+          <span class="badge badge-type">adverb</span>
+          <span class="badge badge-reg">fam</span>
+        </div>
+        <div class="example-row">
+          <span class="ex-fr">moi __ - et toi __</span>
+          <span class="ex-nl">(ook, insgelijks) - ik ook - en jij dan</span>
+        </div>
+      </div>
+
+      <div class="word-card-row">
+        <div class="word-card-header">
+          <span class="word-lemma-header">bibelot [m]</span>
+          <span class="badge badge-level">L1</span>
+          <span class="badge badge-type">noun</span>
+          <span class="badge badge-cat">Amis</span>
+          <span class="badge badge-fav">★</span>
+        </div>
+        <div class="example-row">
+          <span class="ex-fr">une étagère pleine de __s - chiner des __s aux puces</span>
+          <span class="ex-nl">(snuisterij, prulletje) - een plank vol snuisterijen - prulletjes zoeken op de vlooienmarkt</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<div class="section-heading">2 · Word detail</div>
+<div class="screens">
+
+  <div class="screen">
+    <div class="screen-label">2a · Single sense</div>
+    <div class="topbar">
+      <div class="icon-btn">← Back</div>
+      <div class="topbar-title">chavirer</div>
+      <div class="icon-btn">☆</div>
+    </div>
+    <div class="word-card-wrap" style="background:var(--bg)">
+      <div class="word-card">
+        <div class="word-lemma">chavirer [v]</div>
+        <div class="detail-sense">
+          <div class="example-row" style="justify-content:center">
+            <span class="ex-fr" style="text-align:center;font-size:16px">le bateau a chaviré</span>
+            <span class="ex-nl" style="text-align:center;font-size:14px">(kapseizen, omslaan) - de boot is gekapseisd</span>
+          </div>
+        </div>
+        <hr class="word-divider" />
+        <div class="detail-sense">
+          <div class="example-row" style="justify-content:center">
+            <span class="ex-fr" style="text-align:center;font-size:16px">son cœur a chaviré en la voyant</span>
+            <span class="ex-nl" style="text-align:center;font-size:14px">(ontroerd raken) - zijn hart sloeg over toen hij haar zag</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="word-meta">
+      <span class="badge badge-type">verb</span>
+      <span class="badge badge-level">Level 1</span>
+      <span class="badge badge-cat">Frans</span>
+      <span class="badge badge-stat">not yet tested</span>
+    </div>
+    <div class="word-actions">
+      <div class="action-btn">✏ Edit</div>
+      <div class="action-btn">🗑 Delete</div>
+      <div class="action-btn">⬆ Level</div>
+    </div>
+  </div>
+
+  <div class="screen">
+    <div class="screen-label">2b · After testing</div>
+    <div class="topbar">
+      <div class="icon-btn">← Back</div>
+      <div class="topbar-title">nerf</div>
+      <div class="icon-btn" style="color:#e8a020">★</div>
+    </div>
+    <div class="word-card-wrap" style="background:var(--bg)">
+      <div class="word-card">
+        <div class="word-lemma">nerf [m]</div>
+        <div class="detail-sense">
+          <div class="example-row" style="justify-content:center">
+            <span class="ex-fr" style="text-align:center;font-size:15px">avoir les __s à fleur de peau - taper sur les __s de quelqu'un</span>
+            <span class="ex-nl" style="text-align:center;font-size:13px">(zenuw, irritatie) - de zenuwen tot het uiterste gespannen - iemand op de zenuwen werken</span>
+          </div>
+        </div>
+        <hr class="word-divider" />
+        <div class="detail-sense">
+          <div class="example-row" style="justify-content:center">
+            <span class="ex-fr" style="text-align:center;font-size:15px">ce cheval a du __</span>
+            <span class="ex-nl" style="text-align:center;font-size:13px">(pit, kracht) - dat paard heeft pit</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="word-meta">
+      <span class="badge badge-type">noun</span>
+      <span class="badge badge-type">m</span>
+      <span class="badge badge-level">Level 3</span>
+      <span class="badge badge-cat">Frans</span>
+      <span class="badge badge-stat">✓ 4/5 (80%)</span>
+    </div>
+    <div class="word-actions">
+      <div class="action-btn">✏ Edit</div>
+      <div class="action-btn">🗑 Delete</div>
+      <div class="action-btn">⬆ Level</div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<div class="section-heading">3 · Language &amp; category selection</div>
+<div class="screens">
+
+  <div class="screen">
+    <div class="screen-label">3 · Languages</div>
+    <div class="topbar">
+      <div class="icon-btn">← Back</div>
+      <div class="topbar-title">Languages</div>
+      <span></span>
+    </div>
+    <div class="lang-section-header">Collections</div>
+    <div class="lang-list">
+      <div class="lang-row"><span class="lang-icon">📖</span><span class="lang-name">All Words</span><span class="lang-count">4071</span></div>
+      <div class="lang-row"><span class="lang-icon">⭐</span><span class="lang-name">Favorites</span><span class="lang-count">12</span></div>
+      <div class="lang-row"><span class="lang-icon">🕐</span><span class="lang-name">Recently added</span><span class="lang-count">25</span></div>
+    </div>
+    <div class="lang-section-header">Languages</div>
+    <div class="lang-list">
+      <div class="lang-row"><span class="lang-icon">🌐</span><span class="lang-name">Frans</span><span class="lang-count">4071</span></div>
+      <div class="lang-row lang-sub"><span class="lang-icon" style="opacity:0">·</span><span class="lang-name">Amis</span><span class="lang-count">57</span></div>
+      <div class="lang-row lang-sub"><span class="lang-icon" style="opacity:0">·</span><span class="lang-name">Ickabog</span><span class="lang-count">536</span></div>
+      <div class="lang-row lang-sub"><span class="lang-icon" style="opacity:0">·</span><span class="lang-name">Notes</span><span class="lang-count">204</span></div>
+      <div class="lang-row lang-sub"><span class="lang-icon" style="opacity:0">·</span><span class="lang-name">Without Category</span><span class="lang-count">3274</span></div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<div class="section-heading">4 · Practice</div>
+<div class="screens">
+
+  <div class="screen">
+    <div class="screen-label">4a · Lesson list</div>
+    <div class="topbar">
+      <div class="icon-btn">☰</div>
+      <div class="topbar-title">Practice</div>
+      <span></span>
+    </div>
+    <div class="practice-body">
+      <div class="lesson-row">
+        <div class="lesson-icon">🎓</div>
+        <div class="lesson-info">
+          <div class="lesson-name">Train FR</div>
+          <div class="lesson-desc">Frans, Levels: 1 2, 20 words, vocabulary</div>
+        </div>
+        <div class="lesson-actions">
+          <div class="lesson-btn">✏</div>
+          <div class="lesson-btn">🗑</div>
+        </div>
+      </div>
+      <div class="lesson-row">
+        <div class="lesson-icon">🎓</div>
+        <div class="lesson-info">
+          <div class="lesson-name">Train NL</div>
+          <div class="lesson-desc">Frans, Levels: 3 4, 20 words, translation</div>
+        </div>
+        <div class="lesson-actions">
+          <div class="lesson-btn">✏</div>
+          <div class="lesson-btn">🗑</div>
+        </div>
+      </div>
+      <div class="btn-add-lesson">＋ Add new lesson…</div>
+    </div>
+  </div>
+
+  <div class="screen">
+    <div class="screen-label">4b · Create lesson</div>
+    <div class="modal">
+      <div class="modal-header">
+        <h2>New Lesson</h2>
+        <div class="icon-btn">✕</div>
+      </div>
+      <div class="form-grid">
+        <div class="form-section-label">Name</div>
+        <label>Name<input placeholder="Enter name" /></label>
+        <div class="form-section-label">Content</div>
+        <label>Language<select><option>All languages</option><option selected>Frans</option></select></label>
+        <label>Category<select><option>All categories</option><option>Ickabog</option></select></label>
+        <div class="form-field-row">
+          <span class="field-label">Levels</span>
+          <div class="pill-bar">
+            <div class="pill active">1</div><div class="pill active">2</div>
+            <div class="pill">3</div><div class="pill">4</div><div class="pill">5</div>
+          </div>
+        </div>
+        <div class="form-field-row">
+          <span class="field-label">Amount</span>
+          <div class="pill-bar">
+            <div class="pill">10</div><div class="pill">15</div>
+            <div class="pill active">20</div><div class="pill">30</div><div class="pill">50</div>
+          </div>
+        </div>
+        <div class="form-section-label">Options</div>
+        <div class="form-field-row">
+          <span class="field-label">Ask for</span>
+          <div class="pill-bar">
+            <div class="pill active">Vocabulary</div>
+            <div class="pill">Translation</div>
+            <div class="pill">Mixed</div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;font-size:14px">
+          <span>Ask until all answers correct</span>
+          <div class="toggle-mock"></div>
+        </div>
+        <div class="form-actions">
+          <div class="btn-secondary">Cancel</div>
+          <div class="btn-primary">Save</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<div class="section-heading">5 · Lesson session</div>
+<div class="screens">
+
+  <div class="screen">
+    <div class="screen-label">5a · Question</div>
+    <div class="topbar">
+      <div class="icon-btn">✕</div>
+      <div class="topbar-title">Train FR (1 of 20)</div>
+      <div class="icon-btn btn-danger-text">End</div>
+    </div>
+    <div class="session-body">
+      <div class="session-card">
+        <div class="session-card-inner">
+          <div class="card-num">1</div>
+          <div class="question-text">mourir à petit feu - dans la solitude - d'ennui</div>
+          <div class="btn-show-answer">Show Answer</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="screen">
+    <div class="screen-label">5b · Answer revealed</div>
+    <div class="topbar">
+      <div class="icon-btn">✕</div>
+      <div class="topbar-title">Train FR (1 of 20)</div>
+      <div class="icon-btn btn-danger-text">End</div>
+    </div>
+    <div class="session-body">
+      <div class="session-card">
+        <div class="session-card-inner">
+          <div class="card-num">1</div>
+          <div class="question-text">mourir à petit feu - dans la solitude - d'ennui</div>
+          <hr class="answer-divider" />
+          <div class="answer-text">(langzaam sterven) - in eenzaamheid - van verveling</div>
+        </div>
+      </div>
+      <div class="swipe-hint">
+        <span class="hint-wrong">← Wrong</span>
+        <span class="hint-right">Right →</span>
+      </div>
+      <div class="swipe-buttons">
+        <div class="btn-wrong">✗ Wrong</div>
+        <div class="btn-right">✓ Right</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<div class="section-heading">6 · Results</div>
+<div class="screens">
+
+  <div class="screen">
+    <div class="screen-label">6 · Results</div>
+    <div class="topbar">
+      <span></span>
+      <div class="topbar-title">Results</div>
+      <div class="icon-btn btn-primary-text">Done</div>
+    </div>
+    <div class="results-body">
+      <div class="results-score">
+        <div class="score-pct">75%</div>
+        <div>
+          <div class="score-right">15 right answers</div>
+          <div class="score-wrong">5 wrong answers</div>
+        </div>
+      </div>
+      <div class="results-actions">
+        <div class="btn-result-action">↺ Repeat practice</div>
+        <div class="btn-result-action">✗ Practice wrong words</div>
+      </div>
+      <div class="lang-section-header">Wrong words</div>
+      <div class="wrong-words-list">
+        <div class="wrong-word-row">mourir à petit feu - dans la solitude - d'ennui</div>
+        <div class="wrong-word-row">accaparer - le pouvoir - l'attention - son temps</div>
+        <div class="wrong-word-row">bigarré [adj] - une ville bigarrée - un tapis…</div>
+        <div class="wrong-word-row">à la faveur de - il s'est enfui à la faveur de…</div>
+        <div class="wrong-word-row">sournois - un sourire sournois - une…</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<div class="section-heading">7 · Edit word</div>
+<div class="screens">
+
+  <div class="screen">
+    <div class="screen-label">7 · Edit word modal</div>
+    <div class="modal">
+      <div class="modal-header">
+        <h2>Edit Word</h2>
+        <div class="icon-btn">✕</div>
+      </div>
+      <div class="form-grid">
+        <div class="form-section-label">Word</div>
+        <div class="form-row">
+          <label>Lemma<input value="chavirer" /></label>
+          <label>Type<select><option>verb</option></select></label>
+          <label>Gender<select><option>—</option></select></label>
+          <label>Register<input placeholder="fam…" /></label>
+        </div>
+        <div class="form-row">
+          <label>Language<input value="Frans" /></label>
+          <label>Category<input placeholder="optional" /></label>
+          <label>Level<select><option>1</option></select></label>
+        </div>
+        <div class="form-section-label">Senses</div>
+        <div class="edit-sense">
+          <div class="edit-sense-header">
+            <span class="edit-sense-num">Sense 1</span>
+            <span class="btn-remove-sense">✕</span>
+          </div>
+          <div class="edit-sense-field">Translation<input value="kapseizen, omslaan" /></div>
+          <div class="edit-sense-cols">
+            <label>FR examples <span class="field-hint">(separate with -)</span><input value="le bateau a chaviré" /></label>
+            <label>NL examples <span class="field-hint">(separate with -)</span><input value="de boot is gekapseisd" /></label>
+          </div>
+        </div>
+        <div class="edit-sense">
+          <div class="edit-sense-header">
+            <span class="edit-sense-num">Sense 2</span>
+            <span class="btn-remove-sense">✕</span>
+          </div>
+          <div class="edit-sense-field">Translation<input value="ontroerd raken" /></div>
+          <div class="edit-sense-cols">
+            <label>FR examples <span class="field-hint">(separate with -)</span><input value="son cœur a chaviré en la voyant" /></label>
+            <label>NL examples <span class="field-hint">(separate with -)</span><input value="zijn hart sloeg over toen hij haar zag" /></label>
+          </div>
+        </div>
+        <div class="btn-add-sense">＋ Add sense</div>
+        <div class="form-actions">
+          <div class="btn-secondary">Cancel</div>
+          <div class="btn-primary">Save</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+</body>
+</html>

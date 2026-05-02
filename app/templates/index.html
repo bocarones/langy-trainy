@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FransApp</title>
+  <link rel="stylesheet" href="/static/css/style.css?v=8" />
+</head>
+<body>
+
+<!-- ── Sidebar nav ─────────────────────────────────────────────────── -->
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-header">
+    <span class="app-name">FransApp</span>
+    <button class="icon-btn" id="sidebar-close">✕</button>
+  </div>
+  <nav>
+    <a class="nav-item active" data-view="vocabulary" href="#">
+      <span class="nav-icon">📚</span> Vocabulary
+    </a>
+    <a class="nav-item" data-view="languages" href="#">
+      <span class="nav-icon">🌐</span> Languages
+    </a>
+    <a class="nav-item" data-view="practice" href="#">
+      <span class="nav-icon">🎓</span> Practice
+    </a>
+    <a class="nav-item" data-view="import" href="#">
+      <span class="nav-icon">⬆</span> Import
+    </a>
+  </nav>
+</aside>
+<div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+<!-- ── Main content ────────────────────────────────────────────────── -->
+<div class="layout">
+
+  <!-- VOCABULARY VIEW -->
+  <section class="view active" id="view-vocabulary">
+    <header class="topbar">
+      <button class="icon-btn" id="menu-btn">☰</button>
+      <div class="topbar-title" id="vocab-title">All Words</div>
+      <button class="icon-btn btn-primary-text" id="btn-add-word">+ Add</button>
+    </header>
+    <div class="search-bar-wrap">
+      <input type="search" id="vocab-search" class="search-input" placeholder="🔍  Search words…" />
+    </div>
+    <div class="filter-bar">
+      <select id="vocab-lang-filter" class="filter-select"></select>
+      <select id="vocab-cat-filter" class="filter-select"></select>
+      <div class="level-pills" id="vocab-level-filter">
+        <button class="pill active" data-level="">All</button>
+        <button class="pill" data-level="1">1</button>
+        <button class="pill" data-level="2">2</button>
+        <button class="pill" data-level="3">3</button>
+        <button class="pill" data-level="4">4</button>
+        <button class="pill" data-level="5">5</button>
+      </div>
+    </div>
+    <div class="word-list" id="word-list"></div>
+    <div class="load-more-wrap" id="load-more-wrap" style="display:none">
+      <button class="btn-secondary" id="btn-load-more">Load more</button>
+    </div>
+    <div class="fab-bar">
+      <button class="fab" id="btn-practice-fab" title="Practice">🎓</button>
+    </div>
+  </section>
+
+  <!-- WORD VIEW -->
+  <section class="view" id="view-word">
+    <header class="topbar">
+      <button class="icon-btn" id="btn-word-back">← Back</button>
+      <div class="topbar-title" id="word-nav-title"></div>
+      <button class="icon-btn" id="btn-word-fav" title="Favorite">☆</button>
+    </header>
+    <div class="word-card-wrap">
+      <div class="word-card" id="word-card">
+        <div class="word-lemma" id="word-lemma"></div>
+        <div id="word-senses"></div>
+      </div>
+    </div>
+    <div class="word-meta" id="word-meta"></div>
+    <div class="word-actions">
+      <button class="action-btn" id="btn-word-edit">✏ Edit</button>
+      <button class="action-btn danger" id="btn-word-delete">🗑 Delete</button>
+      <button class="action-btn" id="btn-word-level">⬆ Level</button>
+    </div>
+  </section>
+
+  <!-- WORD EDIT MODAL -->
+  <div class="modal-backdrop" id="modal-word-edit" style="display:none">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 id="modal-word-title">Edit Word</h2>
+        <button class="icon-btn" id="btn-modal-word-close">✕</button>
+      </div>
+      <form id="form-word-edit" class="form-grid">
+
+        <div class="form-section-label">WORD</div>
+        <div class="form-row">
+          <label>Lemma<input name="lemma" required placeholder="e.g. chavirer" /></label>
+          <label>Type
+            <select name="word_type">
+              <option value="">—</option>
+              <option value="noun">noun</option>
+              <option value="verb">verb</option>
+              <option value="adjective">adjective</option>
+              <option value="adverb">adverb</option>
+              <option value="expression">expression</option>
+            </select>
+          </label>
+          <label>Gender
+            <select name="gender">
+              <option value="">—</option>
+              <option value="m">m</option>
+              <option value="f">f</option>
+              <option value="m/f">m/f</option>
+            </select>
+          </label>
+          <label>Register<input name="register" placeholder="fam, soutenu…" /></label>
+        </div>
+        <div class="form-row">
+          <label>Language<input name="language" value="Frans" /></label>
+          <label>Category<input name="category" /></label>
+          <label>Level
+            <select name="level">
+              <option value="1">1</option>
+              <option value="2">2</option>
+              <option value="3">3</option>
+              <option value="4">4</option>
+              <option value="5">5</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="form-section-label">SENSES</div>
+        <div id="edit-senses"></div>
+        <button type="button" class="btn-add-sense" id="btn-add-sense">＋ Add sense</button>
+
+        <div class="form-actions">
+          <button type="button" class="btn-secondary" id="btn-modal-word-cancel">Cancel</button>
+          <button type="submit" class="btn-primary">Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- LANGUAGES VIEW -->
+  <section class="view" id="view-languages">
+    <header class="topbar">
+      <button class="icon-btn" id="btn-lang-back">← Back</button>
+      <div class="topbar-title">Languages</div>
+      <span></span>
+    </header>
+    <div class="lang-list-wrap">
+      <div class="lang-section-header">Collections</div>
+      <div class="lang-list" id="collections-list">
+        <div class="lang-row clickable" data-filter="all">
+          <span class="lang-icon">📖</span>
+          <span class="lang-name">All Words</span>
+          <span class="lang-count" id="count-all">—</span>
+        </div>
+        <div class="lang-row clickable" data-filter="favorites">
+          <span class="lang-icon">⭐</span>
+          <span class="lang-name">Favorites</span>
+          <span class="lang-count" id="count-favorites">—</span>
+        </div>
+      </div>
+      <div class="lang-section-header">Languages</div>
+      <div class="lang-list" id="lang-list"></div>
+    </div>
+  </section>
+
+  <!-- PRACTICE VIEW -->
+  <section class="view" id="view-practice">
+    <header class="topbar">
+      <button class="icon-btn" id="menu-btn-practice">☰</button>
+      <div class="topbar-title">Practice</div>
+      <span></span>
+    </header>
+    <div class="practice-body">
+      <div class="lesson-list" id="lesson-list"></div>
+      <button class="btn-add-lesson" id="btn-new-lesson">＋ Add new lesson…</button>
+    </div>
+  </section>
+
+  <!-- CREATE/EDIT LESSON MODAL -->
+  <div class="modal-backdrop" id="modal-lesson" style="display:none">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 id="modal-lesson-title">New Lesson</h2>
+        <button class="icon-btn" id="btn-modal-lesson-close">✕</button>
+      </div>
+      <form id="form-lesson" class="form-grid">
+        <div class="form-section-label">NAME</div>
+        <label><input name="name" placeholder="Enter name" required /></label>
+
+        <div class="form-section-label">CONTENT</div>
+        <label>Language
+          <select name="language" id="lesson-lang-select"></select>
+        </label>
+        <label>Category
+          <select name="category" id="lesson-cat-select"></select>
+        </label>
+        <div class="form-field-row">
+          <span class="field-label">Levels</span>
+          <div class="pill-group" id="lesson-levels">
+            <button type="button" class="pill active" data-val="1">1</button>
+            <button type="button" class="pill active" data-val="2">2</button>
+            <button type="button" class="pill active" data-val="3">3</button>
+            <button type="button" class="pill active" data-val="4">4</button>
+            <button type="button" class="pill active" data-val="5">5</button>
+            <button type="button" class="pill active" data-val="A">A</button>
+          </div>
+        </div>
+        <div class="form-field-row">
+          <span class="field-label">Amount</span>
+          <div class="pill-group" id="lesson-amount">
+            <button type="button" class="pill" data-val="10">10</button>
+            <button type="button" class="pill" data-val="15">15</button>
+            <button type="button" class="pill active" data-val="20">20</button>
+            <button type="button" class="pill" data-val="30">30</button>
+            <button type="button" class="pill" data-val="50">50</button>
+            <button type="button" class="pill" data-val="0">All</button>
+          </div>
+        </div>
+
+        <div class="form-section-label">OPTIONS</div>
+        <div class="form-field-row">
+          <span class="field-label">Ask for</span>
+          <div class="pill-group" id="lesson-direction">
+            <button type="button" class="pill active" data-val="vocabulary">Vocabulary</button>
+            <button type="button" class="pill" data-val="translation">Translation</button>
+            <button type="button" class="pill" data-val="mixed">Mixed</button>
+          </div>
+        </div>
+        <label class="toggle-row">
+          <span>Ask until all answers are correct</span>
+          <input type="checkbox" name="repeat_all" class="toggle" />
+        </label>
+
+        <div class="form-actions">
+          <button type="button" class="btn-secondary" id="btn-modal-lesson-cancel">Cancel</button>
+          <button type="submit" class="btn-primary">Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- LESSON SESSION VIEW -->
+  <section class="view" id="view-session">
+    <header class="topbar">
+      <button class="icon-btn" id="btn-session-exit">✕</button>
+      <div class="topbar-title" id="session-title">Lesson</div>
+      <button class="icon-btn btn-danger-text" id="btn-session-end">End</button>
+    </header>
+    <div class="session-body">
+      <div class="session-card" id="session-card">
+        <div class="session-card-inner" id="session-card-inner">
+          <div class="card-num" id="session-num"></div>
+          <div class="question-text" id="session-question"></div>
+          <div class="answer-area" id="session-answer-area" style="display:none">
+            <hr class="word-divider" />
+            <div class="answer-text" id="session-answer"></div>
+          </div>
+          <button class="btn-show-answer" id="btn-show-answer">Show Answer</button>
+        </div>
+      </div>
+      <div class="swipe-hint" id="swipe-hint" style="display:none">
+        <span class="hint-wrong">← Wrong</span>
+        <span class="hint-right">Right →</span>
+      </div>
+      <div class="swipe-buttons" id="swipe-buttons" style="display:none">
+        <button class="btn-wrong" id="btn-wrong">✗ Wrong</button>
+        <button class="btn-right" id="btn-right">✓ Right</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- RESULTS VIEW -->
+  <section class="view" id="view-results">
+    <header class="topbar">
+      <span></span>
+      <div class="topbar-title">Results</div>
+      <button class="icon-btn btn-primary-text" id="btn-results-done">Done</button>
+    </header>
+    <div class="results-body">
+      <div class="results-score">
+        <div class="score-pct" id="score-pct">0%</div>
+        <div class="score-details">
+          <div class="score-right" id="score-right">0 right answers</div>
+          <div class="score-wrong" id="score-wrong">0 wrong answers</div>
+        </div>
+      </div>
+      <div class="results-actions">
+        <button class="btn-result-action" id="btn-repeat">↺ Repeat practice</button>
+        <button class="btn-result-action" id="btn-practice-wrong">✗ Practice wrong words</button>
+      </div>
+      <div class="wrong-words-section">
+        <div class="lang-section-header">WRONG WORDS</div>
+        <div class="wrong-words-list" id="wrong-words-list"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- IMPORT VIEW -->
+  <section class="view" id="view-import">
+    <header class="topbar">
+      <button class="icon-btn" id="btn-import-back">← Back</button>
+      <div class="topbar-title">Import Words</div>
+      <span></span>
+    </header>
+    <div class="import-body">
+      <div class="import-instructions">
+        <p>Paste one entry per line. Format:</p>
+        <code>lemma [tag] - example FR / translation NL</code>
+      </div>
+      <div class="form-grid">
+        <div class="form-row">
+          <label>Language<input id="import-lang" value="Frans" /></label>
+          <label>Category<input id="import-cat" placeholder="optional" /></label>
+        </div>
+        <label>Entries
+          <textarea id="import-text" rows="12" placeholder="Paste entries here…"></textarea>
+        </label>
+        <div class="form-actions">
+          <button class="btn-primary" id="btn-import-submit">Import</button>
+        </div>
+      </div>
+      <div class="import-result" id="import-result" style="display:none"></div>
+    </div>
+  </section>
+
+</div><!-- /layout -->
+
+<script src="/static/js/app.js?v=8"></script>
+</body>
+</html>
