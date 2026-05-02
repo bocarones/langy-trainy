@@ -1,6 +1,6 @@
 /* ── State ─────────────────────────────────────────────────────────── */
 const state = {
-  vocab: { page: 1, perPage: 50, total: 0, items: [], lang: '', cat: '', level: '', q: '' },
+  vocab: { page: 1, perPage: 50, total: 0, items: [], lang: '', cat: '', level: '', q: '', favorites: false },
   currentEntry: null,
   session: { lesson: null, words: [], index: 0, results: { right: [], wrong: [] } },
   lessons: [],
@@ -11,9 +11,18 @@ const state = {
 
 /* ── Helpers ───────────────────────────────────────────────────────── */
 async function api(path, opts = {}) {
-  const res = await fetch(path, { headers: { 'Content-Type': 'application/json' }, ...opts });
-  if (res.status === 204) return null;
-  return res.json();
+  try {
+    const res = await fetch(path, { headers: { 'Content-Type': 'application/json' }, ...opts });
+    if (res.status === 204) return null;
+    if (!res.ok) {
+      console.error(`API error ${res.status} for ${path}`);
+      return null;
+    }
+    return res.json();
+  } catch (err) {
+    console.error(`API fetch failed for ${path}:`, err);
+    return null;
+  }
 }
 
 function showView(name) {
@@ -36,7 +45,6 @@ function parseSenses(raw) {
   const frSenses = fr.split('**').map(s => s.trim());
   const nlSenses = nl.split('**').map(s => s.trim());
 
-  // Extract lemma header from first sense (everything before first ' - ')
   const dashIdx = frSenses[0].indexOf(' - ');
   const lemma = dashIdx !== -1 ? frSenses[0].slice(0, dashIdx).trim() : frSenses[0];
   frSenses[0] = dashIdx !== -1 ? frSenses[0].slice(dashIdx + 3).trim() : '';
@@ -46,15 +54,12 @@ function parseSenses(raw) {
     const nlParts = nlS.split(' - ').map(s => s.trim()).filter(Boolean);
     const frParts = frS.split(' - ').map(s => s.trim()).filter(Boolean);
 
-    // First NL part is always the translation label; wrap in () if not already
     const rawLabel = nlParts[0] ?? '';
     const label = rawLabel ? (rawLabel.startsWith('(') ? rawLabel : `(${rawLabel})`) : null;
     const nlExamples = nlParts.slice(1);
 
-    // Pair FR examples with NL examples by index
     const examples = frParts.map((frEx, j) => ({ fr: frEx, nl: nlExamples[j] ?? '' }));
 
-    // Fallback single line for session use
     const line = [frS, nlS].filter(Boolean).join(' - ');
     return { label, examples, line };
   });
@@ -68,6 +73,11 @@ function truncate(str, n = 80) {
 function esc(str) {
   return String(str ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
+
+/* ── SVG icons for languages view ─────────────────────────────────── */
+const SVG_GLOBE = `<svg width="18" height="18" viewBox="0 0 18 18" fill="none"><circle cx="9" cy="9" r="6.5" fill="none" stroke="var(--primary)" stroke-width="1.2"/><ellipse cx="9" cy="9" rx="3" ry="6.5" stroke="var(--primary)" stroke-width="1.2"/><path d="M2.5 9h13M3 6h12M3 12h12" stroke="var(--primary)" stroke-width="1" stroke-linecap="round"/></svg>`;
+const SVG_FOLDER = `<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M1 3.5C1 2.67 1.67 2 2.5 2h2.38c.32 0 .62.13.84.35L6.5 3H11.5c.83 0 1.5.67 1.5 1.5v6c0 .83-.67 1.5-1.5 1.5h-9C1.67 12 1 11.33 1 10.5V3.5z" fill="var(--primary-lt)" stroke="var(--primary-mid)" stroke-width="1"/></svg>`;
+const SVG_LESSON = `<svg width="20" height="20" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="5" r="2.5" fill="var(--primary)"/><path d="M6 18v-4.5c0-1.1.9-2 2-2h4c1.1 0 2 .9 2 2V18" stroke="var(--primary)" stroke-width="1.5" stroke-linecap="round"/><path d="M13 10l3-3" stroke="var(--primary)" stroke-width="1.5" stroke-linecap="round"/><circle cx="16.5" cy="6.5" r="1" fill="var(--primary)"/></svg>`;
 
 /* ── Sidebar ───────────────────────────────────────────────────────── */
 function openSidebar() {
@@ -101,22 +111,26 @@ async function loadVocabulary(reset = true) {
   if (reset) { state.vocab.page = 1; state.vocab.items = []; }
   showView('vocabulary');
 
-  const { lang, cat, level, q, page, perPage } = state.vocab;
+  const { lang, cat, level, q, page, perPage, favorites } = state.vocab;
   const params = new URLSearchParams({ page, per_page: perPage });
   if (q) params.set('q', q);
   if (lang) params.set('language', lang);
   if (cat) params.set('category', cat);
   if (level) params.set('level', level);
+  if (favorites) params.set('favorite', '1');
 
   const data = await api(`/api/entries?${params}`);
+  if (!data) return;
   if (reset) state.vocab.items = data.items;
   else state.vocab.items.push(...data.items);
   state.vocab.total = data.total;
 
   renderWordList();
   updateVocabTitle();
-  await populateLangFilter();
-  await populateCatFilter();
+  if (reset) {
+    await populateLangFilter();
+    await populateCatFilter();
+  }
 
   const loadMore = document.getElementById('load-more-wrap');
   loadMore.style.display = state.vocab.items.length < state.vocab.total ? 'block' : 'none';
@@ -131,16 +145,19 @@ function renderWordList() {
   list.innerHTML = state.vocab.items.map(e => {
     const { lemma, senses } = parseSenses(e.raw);
     const senseRows = senses.map(s => {
-      const frLine = s.examples.map(ex => ex.fr).join(' - ');
-      const nlLine = [s.label, ...s.examples.map(ex => ex.nl).filter(Boolean)].filter(Boolean).join(' - ');
+      const frLine = s.examples.map(ex => ex.fr).join(' — ');
+      const nlLine = s.examples.map(ex => ex.nl).filter(Boolean).join(' — ');
       return `<div class="example-row">
         <span class="ex-fr">${esc(frLine)}</span>
         <span class="ex-nl">${esc(nlLine)}</span>
       </div>`;
     }).join('');
+    const typeGender = e.word_type
+      ? (e.gender ? `${e.word_type}·${e.gender}` : e.word_type)
+      : '';
     const badges = [
+      typeGender   ? `<span class="badge badge-type">${esc(typeGender)}</span>` : '',
       `<span class="badge badge-level">L${e.level}</span>`,
-      e.word_type ? `<span class="badge badge-type">${esc(e.word_type)}</span>` : '',
       e.register   ? `<span class="badge badge-reg">${esc(e.register)}</span>` : '',
       e.category   ? `<span class="badge badge-cat">${esc(e.category)}</span>` : '',
       e.favorite   ? `<span class="badge badge-fav">★</span>` : '',
@@ -160,8 +177,10 @@ function renderWordList() {
 }
 
 function updateVocabTitle() {
-  let title = state.vocab.lang || 'All Words';
-  if (state.vocab.cat && state.vocab.cat !== '__none__') title += ` › ${state.vocab.cat}`;
+  let title = 'All Words';
+  if (state.vocab.favorites) title = 'Favorites';
+  else if (state.vocab.lang) title = state.vocab.lang;
+  if (!state.vocab.favorites && state.vocab.cat && state.vocab.cat !== '__none__') title += ` › ${state.vocab.cat}`;
   document.getElementById('vocab-title').textContent = title;
 }
 
@@ -169,6 +188,7 @@ async function populateLangFilter() {
   const sel = document.getElementById('vocab-lang-filter');
   const current = sel.value;
   const langs = await api('/api/languages');
+  if (!langs) return;
   sel.innerHTML = `<option value="">All languages</option>` +
     langs.map(l => `<option value="${esc(l.language)}">${esc(l.language)} (${l.total})</option>`).join('');
   sel.value = current || state.vocab.lang;
@@ -179,33 +199,31 @@ async function populateCatFilter() {
   const current = sel.value;
   const params = state.vocab.lang ? `?language=${encodeURIComponent(state.vocab.lang)}` : '';
   const cats = await api(`/api/categories${params}`);
+  if (!cats) return;
   sel.innerHTML = `<option value="">All categories</option>` +
     cats.map(c => `<option value="${esc(c.category)}">${c.category === '__none__' ? 'Without category' : esc(c.category)} (${c.total})</option>`).join('');
   sel.value = current || state.vocab.cat;
 }
 
-// Search
 document.getElementById('vocab-search').addEventListener('input', e => {
   clearTimeout(searchTimer);
   state.vocab.q = e.target.value.trim();
   searchTimer = setTimeout(() => loadVocabulary(), 280);
 });
 
-// Language filter
 document.getElementById('vocab-lang-filter').addEventListener('change', e => {
   state.vocab.lang = e.target.value;
   state.vocab.cat = '';
+  state.vocab.favorites = false;
   document.getElementById('vocab-cat-filter').value = '';
   loadVocabulary();
 });
 
-// Category filter
 document.getElementById('vocab-cat-filter').addEventListener('change', e => {
   state.vocab.cat = e.target.value;
   loadVocabulary();
 });
 
-// Level pills
 document.getElementById('vocab-level-filter').addEventListener('click', e => {
   const pill = e.target.closest('.pill');
   if (!pill) return;
@@ -215,55 +233,64 @@ document.getElementById('vocab-level-filter').addEventListener('click', e => {
   loadVocabulary();
 });
 
-// Load more
 document.getElementById('btn-load-more').addEventListener('click', () => {
   state.vocab.page++;
   loadVocabulary(false);
 });
 
-// Add word button
 document.getElementById('btn-add-word').addEventListener('click', () => openWordEditModal(null));
-
-// Practice FAB
 document.getElementById('btn-practice-fab').addEventListener('click', () => loadPractice());
 
 /* ── WORD DETAIL VIEW ─────────────────────────────────────────────── */
 async function openWordView(id, backView = 'vocabulary') {
   const entry = await api(`/api/entries/${id}`);
+  if (!entry) return;
   state.currentEntry = entry;
   state.backView = backView;
 
   const { lemma, senses } = parseSenses(entry.raw);
-  document.getElementById('word-lemma').textContent = lemma;
+
+  // Extract tag from lemma string (e.g. "chavirer [v]" → "[v]")
+  const tagMatch = lemma.match(/\s(\[.*?\].*)$/);
+  const lemmaBase = tagMatch ? lemma.slice(0, lemma.length - tagMatch[0].length) : lemma;
+  const lemmaTag = tagMatch ? tagMatch[1] : '';
+
+  document.getElementById('word-lemma').innerHTML =
+    esc(lemmaBase) + (lemmaTag ? ` <span class="word-lemma-tag">${esc(lemmaTag)}</span>` : '');
+
   document.getElementById('word-senses').innerHTML = senses.map((s, i) => {
-    const frLine = s.examples.map(ex => ex.fr).join(' - ');
-    const nlLine = [s.label, ...s.examples.map(ex => ex.nl).filter(Boolean)].filter(Boolean).join(' - ');
+    const frLine = s.examples.map(ex => ex.fr).join(' — ');
+    const nlLine = s.examples.map(ex => ex.nl).filter(Boolean).join(' — ');
+    const translationLabel = s.label ? s.label.replace(/^\(|\)$/g, '') : '';
     return `${i > 0 ? '<hr class="word-divider" />' : ''}
     <div class="detail-sense">
-      <div class="example-row">
-        <span class="ex-fr">${esc(frLine)}</span>
-        <span class="ex-nl">${esc(nlLine)}</span>
-      </div>
+      <div class="example-row"><span class="ex-fr">${esc(frLine)}</span></div>
+      ${translationLabel ? `<div class="sense-translation">${esc(translationLabel)}</div>` : ''}
+      ${nlLine ? `<div class="example-row"><span class="ex-nl">${esc(nlLine)}</span></div>` : ''}
     </div>`;
   }).join('');
+
   document.getElementById('word-nav-title').textContent = entry.lemma;
 
   const fav = document.getElementById('btn-word-fav');
   fav.textContent = entry.favorite ? '★' : '☆';
-  fav.style.color = entry.favorite ? '#e8a020' : '';
+  fav.style.color = entry.favorite ? 'var(--accent)' : '';
 
   const pct = entry.times_tested
     ? Math.round((entry.times_correct / entry.times_tested) * 100)
     : null;
+  const statClass = pct !== null && pct >= 60 ? 'badge-stat good' : 'badge-stat';
+  const typeGender = entry.word_type
+    ? (entry.gender ? `${entry.word_type}·${entry.gender}` : entry.word_type)
+    : '';
   const meta = [
-    entry.word_type ? `<span class="badge badge-type">${esc(entry.word_type)}</span>` : '',
-    entry.gender    ? `<span class="badge badge-type">${esc(entry.gender)}</span>` : '',
-    entry.register  ? `<span class="badge badge-reg">${esc(entry.register)}</span>` : '',
+    typeGender     ? `<span class="badge badge-type">${esc(typeGender)}</span>` : '',
+    entry.register ? `<span class="badge badge-reg">${esc(entry.register)}</span>` : '',
     `<span class="badge badge-level">Level ${entry.level}</span>`,
-    entry.language  ? `<span class="badge badge-cat">${esc(entry.language)}</span>` : '',
-    entry.category  ? `<span class="badge badge-cat">${esc(entry.category)}</span>` : '',
+    entry.language ? `<span class="badge badge-cat">${esc(entry.language)}</span>` : '',
+    entry.category ? `<span class="badge badge-cat">${esc(entry.category)}</span>` : '',
     entry.times_tested
-      ? `<span class="badge badge-stat">✓ ${entry.times_correct}/${entry.times_tested} (${pct}%)</span>`
+      ? `<span class="badge ${statClass}">✓ ${entry.times_correct}/${entry.times_tested} · ${pct}%</span>`
       : `<span class="badge badge-stat">not yet tested</span>`,
   ].join('');
   document.getElementById('word-meta').innerHTML = meta;
@@ -282,19 +309,20 @@ document.getElementById('btn-word-fav').addEventListener('click', async () => {
     method: 'PUT',
     body: JSON.stringify({ favorite: e.favorite ? 0 : 1 }),
   });
+  if (!updated) return;
   state.currentEntry = updated;
   const fav = document.getElementById('btn-word-fav');
   fav.textContent = updated.favorite ? '★' : '☆';
-  fav.style.color = updated.favorite ? '#e8a020' : '';
-  // refresh list item
+  fav.style.color = updated.favorite ? 'var(--accent)' : '';
+  // refresh badge in word list
   const row = document.querySelector(`[data-id="${e.id}"]`);
   if (row) {
-    const badgesEl = row.querySelector('.word-badges');
-    if (badgesEl) {
-      const favBadge = badgesEl.querySelector('.badge-fav');
-      if (updated.favorite && !favBadge) badgesEl.insertAdjacentHTML('beforeend', '<span class="badge badge-fav">★</span>');
-      if (!updated.favorite && favBadge) favBadge.remove();
+    const header = row.querySelector('.word-card-header');
+    const favBadge = header && header.querySelector('.badge-fav');
+    if (updated.favorite && header && !favBadge) {
+      header.insertAdjacentHTML('beforeend', '<span class="badge badge-fav">★</span>');
     }
+    if (!updated.favorite && favBadge) favBadge.remove();
   }
 });
 
@@ -317,12 +345,13 @@ document.getElementById('btn-word-level').addEventListener('click', async () => 
     method: 'PUT',
     body: JSON.stringify({ level: newLevel }),
   });
+  if (!updated) return;
   state.currentEntry = updated;
-  document.getElementById('word-meta').querySelector('.badge-level').textContent = `Level ${updated.level}`;
+  const lvlBadge = document.getElementById('word-meta').querySelector('.badge-level');
+  if (lvlBadge) lvlBadge.textContent = `Level ${updated.level}`;
 });
 
 /* ── WORD EDIT MODAL ──────────────────────────────────────────────── */
-
 function renderEditSenses(senses) {
   const container = document.getElementById('edit-senses');
   container.innerHTML = '';
@@ -334,9 +363,7 @@ function renderEditSense(container, s, si) {
   div.className = 'edit-sense';
   div.dataset.si = si;
 
-  // Translation label (strip surrounding parens for editing)
   const labelVal = s.label ? s.label.replace(/^\(|\)$/g, '') : '';
-  // FR examples joined, NL examples joined
   const frVal = s.examples.map(e => e.fr).join(' - ');
   const nlVal = s.examples.map(e => e.nl).filter(Boolean).join(' - ');
 
@@ -368,12 +395,11 @@ function addEditSense() {
 }
 
 function collectRaw(form) {
-  const lemma   = form.elements['lemma'].value.trim();
-  const wtype   = form.elements['word_type'].value;
-  const gender  = form.elements['gender'].value;
+  const lemma    = form.elements['lemma'].value.trim();
+  const wtype    = form.elements['word_type'].value;
+  const gender   = form.elements['gender'].value;
   const register = form.elements['register'].value.trim();
 
-  // Build lemma tag: "chavirer [v]" or "nerf [m] (fam)"
   const tagMap = { noun: gender || 'm', verb: 'v', adjective: 'adj', adverb: 'adv', expression: 'expr' };
   const tag = tagMap[wtype] ?? wtype;
   const regSuffix = register ? ` (${register})` : '';
@@ -391,7 +417,6 @@ function collectRaw(form) {
       ? [lemmaTag, frExamples].filter(Boolean).join(' - ')
       : frExamples;
 
-    // NL: "(translation) - example1 - example2"
     const nlLabel = translation ? `(${translation.replace(/^\(|\)$/g, '')})` : '';
     const nlSense = [nlLabel, nlExamples].filter(Boolean).join(' - ');
 
@@ -413,7 +438,6 @@ function openWordEditModal(entry) {
     if (el) el.value = entry ? (entry[f] ?? '') : (f === 'language' ? 'Frans' : f === 'level' ? '1' : '');
   });
 
-  // Populate senses
   if (entry) {
     const { senses } = parseSenses(entry.raw);
     renderEditSenses(senses);
@@ -445,7 +469,7 @@ document.getElementById('form-word-edit').addEventListener('submit', async e => 
   let saved;
   if (state.editingEntryId) {
     saved = await api(`/api/entries/${state.editingEntryId}`, { method: 'PUT', body: JSON.stringify(body) });
-    // Update in list
+    if (!saved) return;
     const idx = state.vocab.items.findIndex(i => i.id === state.editingEntryId);
     if (idx !== -1) state.vocab.items[idx] = saved;
     renderWordList();
@@ -454,6 +478,7 @@ document.getElementById('form-word-edit').addEventListener('submit', async e => 
     openWordView(saved.id, state.backView);
   } else {
     saved = await api('/api/entries', { method: 'POST', body: JSON.stringify(body) });
+    if (!saved) return;
     closeWordEditModal();
     await loadVocabulary();
   }
@@ -463,45 +488,42 @@ document.getElementById('form-word-edit').addEventListener('submit', async e => 
 async function loadLanguages() {
   showView('languages');
 
-  const [langs, allEntries] = await Promise.all([
+  const [langs, allEntries, favs] = await Promise.all([
     api('/api/languages'),
     api('/api/entries?per_page=1'),
+    api('/api/entries?favorite=1&per_page=1'),
   ]);
 
-  const favs = await api('/api/entries?favorite=1&per_page=1');
-  document.getElementById('count-all').textContent = allEntries.total;
-  document.getElementById('count-favorites').textContent = favs.total;
+  if (allEntries) document.getElementById('count-all').textContent = allEntries.total;
+  if (favs) document.getElementById('count-favorites').textContent = favs.total;
 
+  if (!langs) return;
   const langList = document.getElementById('lang-list');
   const langRows = await Promise.all(langs.map(async lang => {
     const cats = await api(`/api/categories?language=${encodeURIComponent(lang.language)}`);
-    const catRows = cats.map(c => {
+    const catRows = (cats || []).map(c => {
       const label = c.category === '__none__' ? 'Without Category' : esc(c.category);
       return `<div class="lang-row lang-sub clickable" data-lang="${esc(lang.language)}" data-cat="${esc(c.category)}">
-        <span class="lang-icon" style="opacity:0"></span>
+        <span class="lang-icon-svg">${SVG_FOLDER}</span>
         <span class="lang-name">${label}</span>
         <span class="lang-count">${c.total}</span>
       </div>`;
     }).join('');
 
     return `<div class="lang-row clickable" data-lang="${esc(lang.language)}" data-cat="">
-        <span class="lang-icon">🌐</span>
-        <span class="lang-name">${esc(lang.language)}</span>
+        <span class="lang-icon-svg">${SVG_GLOBE}</span>
+        <span class="lang-name" style="font-weight:600">${esc(lang.language)}</span>
         <span class="lang-count">${lang.total}</span>
       </div>${catRows}`;
   }));
   langList.innerHTML = langRows.join('');
 
-  // Clicks
   document.getElementById('collections-list').querySelectorAll('.clickable').forEach(row => {
     row.addEventListener('click', () => {
       const filter = row.dataset.filter;
       state.vocab.lang = '';
       state.vocab.cat = '';
-      if (filter === 'favorites') {
-        // not yet a proper filter — open vocab with favorites note
-        state.vocab.lang = '';
-      }
+      state.vocab.favorites = filter === 'favorites';
       loadVocabulary();
     });
   });
@@ -510,6 +532,7 @@ async function loadLanguages() {
     row.addEventListener('click', () => {
       state.vocab.lang = row.dataset.lang || '';
       state.vocab.cat  = row.dataset.cat  || '';
+      state.vocab.favorites = false;
       loadVocabulary();
     });
   });
@@ -521,6 +544,7 @@ document.getElementById('btn-lang-back').addEventListener('click', () => loadVoc
 async function loadPractice() {
   showView('practice');
   const lessons = await api('/api/lessons');
+  if (!lessons) return;
   state.lessons = lessons;
 
   const list = document.getElementById('lesson-list');
@@ -529,10 +553,10 @@ async function loadPractice() {
     return;
   }
   list.innerHTML = lessons.map(l => {
-    const levelStr = l.levels.split(',').join(' ');
-    const desc = `${l.language || 'All languages'}, Levels: ${levelStr}, ${l.amount || 'All'} words, ${l.direction}`;
+    const levelStr = l.levels.split(',').join('·');
+    const desc = `${l.language || 'All'} · L${levelStr} · ${l.amount || 'All'} words · ${l.direction}`;
     return `<div class="lesson-row" data-id="${l.id}">
-      <div class="lesson-icon">🎓</div>
+      <div class="lesson-icon">${SVG_LESSON}</div>
       <div class="lesson-info">
         <div class="lesson-name">${esc(l.name)}</div>
         <div class="lesson-desc">${esc(desc)}</div>
@@ -576,29 +600,25 @@ async function openLessonModal(lesson = null) {
   form.elements['name'].value = lesson ? lesson.name : '';
   form.elements['repeat_all'].checked = lesson ? !!lesson.repeat_all : false;
 
-  // Populate language select
   const langSel = document.getElementById('lesson-lang-select');
   const langs = await api('/api/languages');
   langSel.innerHTML = `<option value="">All languages</option>` +
-    langs.map(l => `<option value="${esc(l.language)}">${esc(l.language)}</option>`).join('');
+    (langs || []).map(l => `<option value="${esc(l.language)}">${esc(l.language)}</option>`).join('');
   langSel.value = lesson ? (lesson.language || '') : '';
 
   await updateLessonCats(langSel.value, lesson ? lesson.category : null);
 
-  // Levels
   const activeLevels = lesson ? lesson.levels.split(',') : ['1','2','3','4','5'];
   document.querySelectorAll('#lesson-levels .pill').forEach(p => {
     const v = p.dataset.val;
     p.classList.toggle('active', v === 'A' ? activeLevels.length === 5 : activeLevels.includes(v));
   });
 
-  // Amount
   const amount = lesson ? String(lesson.amount) : '20';
   document.querySelectorAll('#lesson-amount .pill').forEach(p => {
     p.classList.toggle('active', p.dataset.val === amount);
   });
 
-  // Direction
   const dir = lesson ? lesson.direction : 'vocabulary';
   document.querySelectorAll('#lesson-direction .pill').forEach(p => {
     p.classList.toggle('active', p.dataset.val === dir);
@@ -612,7 +632,7 @@ async function updateLessonCats(lang, selectedCat) {
   const params = lang ? `?language=${encodeURIComponent(lang)}` : '';
   const cats = await api(`/api/categories${params}`);
   catSel.innerHTML = `<option value="">All categories</option>` +
-    cats.filter(c => c.category !== '__none__')
+    (cats || []).filter(c => c.category !== '__none__')
         .map(c => `<option value="${esc(c.category)}">${esc(c.category)}</option>`).join('');
   catSel.value = selectedCat || '';
 }
@@ -621,7 +641,6 @@ document.getElementById('lesson-lang-select').addEventListener('change', e => {
   updateLessonCats(e.target.value, null);
 });
 
-// Pill toggles in lesson modal
 ['lesson-levels','lesson-amount','lesson-direction'].forEach(groupId => {
   document.getElementById(groupId).addEventListener('click', e => {
     const pill = e.target.closest('.pill');
@@ -637,7 +656,6 @@ document.getElementById('lesson-lang-select').addEventListener('change', e => {
         document.querySelector('#lesson-levels .pill[data-val="A"]').classList.toggle('active', allActive);
       }
     } else {
-      // single-select
       document.querySelectorAll(`#${groupId} .pill`).forEach(p => p.classList.remove('active'));
       pill.classList.add('active');
     }
@@ -682,7 +700,7 @@ document.getElementById('form-lesson').addEventListener('submit', async e => {
 /* ── SESSION ──────────────────────────────────────────────────────── */
 async function startLesson(lessonId) {
   const data = await api(`/api/lessons/${lessonId}/start`);
-  if (!data.words.length) {
+  if (!data || !data.words.length) {
     alert('No words match the lesson criteria.');
     return;
   }
@@ -697,21 +715,61 @@ async function startLesson(lessonId) {
   showView('session');
 }
 
+function renderSessionWord(word, revealed) {
+  const direction = state.session.lesson.direction;
+  // word.question is already the correct side based on direction from the server
+  const isTranslation = direction === 'translation';
+  const frText = isTranslation ? word.answer : word.question;
+  const nlText = isTranslation ? word.question : word.answer;
+
+  if (revealed) {
+    return `<div class="word-card-row" style="box-shadow:none;border:none;padding:6px 0">
+      <div class="word-card-header"><span class="word-lemma-header">${esc(frText.split(' - ')[0] || frText)}</span></div>
+      <div class="example-row">
+        <span class="ex-fr">${esc(frText)}</span>
+        <span class="ex-nl">${esc(nlText)}</span>
+      </div>
+    </div>`;
+  }
+  // Hidden: show question side, hide answer side
+  if (isTranslation) {
+    // NL → FR: show NL, hide FR
+    return `<div class="word-card-row" style="box-shadow:none;border:none;padding:6px 0">
+      <div class="example-row">
+        <span class="ex-fr session-col-hidden">${esc(frText)}</span>
+        <span class="ex-nl">${esc(nlText)}</span>
+      </div>
+    </div>`;
+  }
+  // FR → NL: show FR, hide NL
+  return `<div class="word-card-row" style="box-shadow:none;border:none;padding:6px 0">
+    <div class="word-card-header"><span class="word-lemma-header">${esc(frText.split(' - ')[0] || frText)}</span></div>
+    <div class="example-row">
+      <span class="ex-fr">${esc(frText)}</span>
+      <span class="ex-nl session-col-hidden">${esc(nlText)}</span>
+    </div>
+  </div>`;
+}
+
 function showSessionCard() {
   const { words, index } = state.session;
   const word = words[index];
+  const total = words.length;
 
   document.getElementById('session-title').textContent =
-    `${state.session.lesson.name} (${index + 1} of ${words.length})`;
-  document.getElementById('session-num').textContent = index + 1;
-  document.getElementById('session-question').textContent = word.question;
-  document.getElementById('session-answer').textContent = word.answer;
-  document.getElementById('session-answer-area').style.display = 'none';
-  document.getElementById('btn-show-answer').style.display = 'block';
-  document.getElementById('swipe-hint').style.display = 'none';
-  document.getElementById('swipe-buttons').style.display = 'none';
+    `${state.session.lesson.name} · ${index + 1} of ${total}`;
+  document.getElementById('session-num').textContent = `card ${index + 1} / ${total}`;
 
-  // Reset card
+  const fill = document.getElementById('session-progress-fill');
+  fill.style.width = `${Math.round((index / total) * 100)}%`;
+
+  document.getElementById('session-word-content').innerHTML = renderSessionWord(word, false);
+
+  document.getElementById('btn-show-answer').style.display = '';
+  document.getElementById('swipe-hint').style.display = 'none';
+  document.getElementById('answer-buttons').style.display = 'none';
+  document.getElementById('swipe-buttons').style.display = '';
+
   const card = document.getElementById('session-card');
   card.classList.remove('swipe-left', 'swipe-right', 'dragging', 'drag-left', 'drag-right');
   card.style.transform = '';
@@ -719,10 +777,12 @@ function showSessionCard() {
 }
 
 function revealAnswer() {
-  document.getElementById('session-answer-area').style.display = 'block';
+  const word = state.session.words[state.session.index];
+  document.getElementById('session-word-content').innerHTML = renderSessionWord(word, true);
   document.getElementById('btn-show-answer').style.display = 'none';
+  document.getElementById('swipe-buttons').style.display = 'none';
   document.getElementById('swipe-hint').style.display = 'flex';
-  document.getElementById('swipe-buttons').style.display = 'flex';
+  document.getElementById('answer-buttons').style.display = 'flex';
   initSwipe();
 }
 
@@ -765,14 +825,12 @@ function initSwipe() {
 function swipeStart(x) {
   swipeStartX = x;
   swipeDragging = true;
-  const card = document.getElementById('session-card');
-  if (card) card.classList.add('dragging');
+  document.getElementById('session-card').classList.add('dragging');
 }
 function swipeMove(x) {
   if (!swipeDragging) return;
   swipeCurrentX = x - swipeStartX;
   const card = document.getElementById('session-card');
-  if (!card) return;
   card.style.transform = `translateX(${swipeCurrentX}px) rotate(${swipeCurrentX * 0.04}deg)`;
   card.classList.toggle('drag-left',  swipeCurrentX < -30);
   card.classList.toggle('drag-right', swipeCurrentX >  30);
@@ -781,7 +839,6 @@ function swipeEnd() {
   if (!swipeDragging) return;
   swipeDragging = false;
   const card = document.getElementById('session-card');
-  if (!card) return;
   card.classList.remove('dragging', 'drag-left', 'drag-right');
   if (swipeCurrentX < -80) {
     card.classList.add('swipe-left');
@@ -810,8 +867,16 @@ function showResults() {
   const pct = total ? Math.round((right.length / total) * 100) : 0;
 
   document.getElementById('score-pct').textContent = `${pct}%`;
-  document.getElementById('score-right').textContent = `${right.length} right answer${right.length !== 1 ? 's' : ''}`;
-  document.getElementById('score-wrong').textContent = `${wrong.length} wrong answer${wrong.length !== 1 ? 's' : ''}`;
+  document.getElementById('score-right').textContent = `✓ ${right.length} correct`;
+  document.getElementById('score-wrong').textContent = `✗ ${wrong.length} incorrect`;
+  document.getElementById('score-meta').textContent =
+    `${state.session.lesson.name} · ${total} words`;
+
+  // Animate score ring: circumference = 2π×32 ≈ 201
+  const circumference = 201;
+  const offset = circumference - (pct / 100) * circumference;
+  const ringFill = document.getElementById('score-ring-fill');
+  ringFill.style.strokeDashoffset = offset;
 
   const wrongList = document.getElementById('wrong-words-list');
   wrongList.innerHTML = wrong.map(w =>
@@ -856,12 +921,12 @@ document.getElementById('btn-import-submit').addEventListener('click', async () 
     body: JSON.stringify({ lines, language: lang, category: cat }),
   });
 
+  if (!result) return;
   const resultEl = document.getElementById('import-result');
   resultEl.style.display = 'block';
   resultEl.textContent = `✓ Imported ${result.inserted} entries${result.skipped ? `, skipped ${result.skipped}` : ''}.`;
   document.getElementById('import-text').value = '';
 });
-
 
 /* ── Boot ──────────────────────────────────────────────────────────── */
 loadVocabulary();

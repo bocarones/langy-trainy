@@ -1,0 +1,1946 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>FransApp — Design Review</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+
+<style>
+/* ── Reset ── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* ── Design tokens ── */
+:root {
+  /* Palette */
+  --ink:        oklch(18% 0.02 250);
+  --ink-muted:  oklch(48% 0.03 250);
+  --ink-light:  oklch(68% 0.025 250);
+  --canvas:     oklch(96.5% 0.008 240);
+  --surface:    oklch(99.5% 0.003 240);
+  --surface2:   oklch(97% 0.008 240);
+  --border:     oklch(90% 0.012 240);
+  --border-md:  oklch(84% 0.015 240);
+
+  /* Brand */
+  --primary:      oklch(46% 0.12 255);
+  --primary-dk:   oklch(36% 0.12 255);
+  --primary-lt:   oklch(92% 0.06 255);
+  --primary-mid:  oklch(78% 0.08 255);
+  --accent:       oklch(66% 0.14 55);   /* warm amber */
+  --accent-lt:    oklch(95% 0.06 55);
+  --danger:       oklch(54% 0.18 22);
+  --danger-lt:    oklch(95% 0.06 22);
+  --success:      oklch(52% 0.14 152);
+  --success-lt:   oklch(94% 0.05 152);
+
+  /* Type */
+  --font-sans: 'DM Sans', -apple-system, sans-serif;
+  --font-mono: 'DM Mono', 'SF Mono', monospace;
+
+  /* Geometry */
+  --r:    14px;
+  --r-sm: 8px;
+  --r-xs: 5px;
+  --shadow-sm: 0 1px 4px oklch(30% 0.05 250 / .08), 0 2px 10px oklch(30% 0.05 250 / .06);
+  --shadow:    0 2px 8px oklch(30% 0.05 250 / .10), 0 6px 24px oklch(30% 0.05 250 / .08);
+  --shadow-md: 0 4px 16px oklch(30% 0.05 250 / .14), 0 12px 40px oklch(30% 0.05 250 / .10);
+}
+
+body {
+  font-family: var(--font-sans);
+  background: var(--canvas);
+  color: var(--ink);
+  font-size: 15px;
+  line-height: 1.5;
+  padding: 0;
+  min-height: 100vh;
+}
+
+/* ── Page chrome ── */
+.page-header {
+  padding: 48px 56px 36px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  display: flex;
+  align-items: baseline;
+  gap: 20px;
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  backdrop-filter: blur(12px);
+  background: oklch(99.5% 0.003 240 / .92);
+}
+.page-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--ink);
+  letter-spacing: -.02em;
+}
+.page-title span { color: var(--primary); }
+.page-sub {
+  font-size: 13px;
+  color: var(--ink-light);
+  font-weight: 400;
+}
+
+/* ── Section nav ── */
+.section-nav {
+  display: flex;
+  gap: 6px;
+  margin-left: auto;
+  flex-wrap: wrap;
+}
+.section-nav a {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  text-decoration: none;
+  padding: 4px 10px;
+  border-radius: 20px;
+  color: var(--ink-muted);
+  background: transparent;
+  transition: background .15s, color .15s;
+}
+.section-nav a:hover { background: var(--primary-lt); color: var(--primary); }
+
+/* ── Content area ── */
+.content { padding: 0 56px 80px; }
+
+/* ── Section heading ── */
+.section-block { padding-top: 52px; }
+.section-heading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+.section-num {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--primary);
+  background: var(--primary-lt);
+  padding: 3px 9px;
+  border-radius: 20px;
+}
+.section-title {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+.section-line { flex: 1; height: 1px; background: var(--border); }
+
+/* ── Screens row ── */
+.screens { display: flex; gap: 20px; flex-wrap: wrap; align-items: flex-start; }
+
+/* ── Phone frame ── */
+.screen {
+  background: var(--surface);
+  border-radius: 22px;
+  overflow: hidden;
+  box-shadow: var(--shadow-md);
+  width: 358px;
+  flex-shrink: 0;
+  border: 1px solid var(--border);
+}
+.screen-label {
+  background: var(--ink);
+  color: oklch(90% 0.02 240);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  padding: 7px 16px;
+  font-family: var(--font-mono);
+}
+
+/* ── Topbar ── */
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 54px;
+  padding: 0 14px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+.topbar-title {
+  font-size: 16px;
+  font-weight: 700;
+  flex: 1;
+  text-align: center;
+  letter-spacing: -.01em;
+  color: var(--ink);
+}
+.icon-btn {
+  background: none;
+  border: none;
+  font-size: 14px;
+  color: var(--primary);
+  padding: 6px 8px;
+  border-radius: var(--r-sm);
+  min-width: 44px;
+  text-align: center;
+  cursor: default;
+  font-weight: 600;
+  font-family: var(--font-sans);
+}
+.btn-danger-text { color: var(--danger); }
+
+/* ── Search ── */
+.search-bar-wrap {
+  padding: 10px 14px 8px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+.search-input {
+  width: 100%;
+  padding: 9px 16px;
+  border: none;
+  border-radius: 24px;
+  background: var(--canvas);
+  font-size: 13px;
+  color: var(--ink-muted);
+  font-family: var(--font-sans);
+}
+
+/* ── Filter bar ── */
+.filter-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding: 8px 14px 10px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+.filter-selects {
+  display: flex;
+  gap: 8px;
+}
+.filter-select {
+  flex: 1;
+  padding: 7px 12px;
+  border: 1px solid var(--border-md);
+  border-radius: 20px;
+  background: var(--surface);
+  font-size: 13px;
+  color: var(--ink);
+  font-family: var(--font-sans);
+  min-height: 36px;
+}
+.pill-bar { display: flex; gap: 4px; }
+.pill {
+  padding: 6px 12px;
+  border-radius: 20px;
+  border: 1.5px solid var(--border-md);
+  background: var(--surface);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ink-muted);
+  min-height: 34px;
+  display: flex;
+  align-items: center;
+}
+.pill.active {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+}
+
+/* ── Word list ── */
+.word-list {
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: var(--canvas);
+}
+.word-card-row {
+  background: var(--surface);
+  border-radius: var(--r);
+  padding: 13px 14px;
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--border);
+}
+.word-card-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+.word-lemma-header {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ink);
+  letter-spacing: -.01em;
+  margin-right: 2px;
+}
+
+/* ── Badges ── */
+.badge {
+  font-size: 10px;
+  padding: 2px 7px;
+  border-radius: 20px;
+  font-weight: 600;
+  letter-spacing: .02em;
+  font-family: var(--font-mono);
+}
+.badge-level { background: var(--primary-lt); color: var(--primary-dk); }
+.badge-type  { background: var(--success-lt); color: var(--success); }
+.badge-reg   { background: oklch(95% 0.04 80); color: oklch(40% 0.12 60); }
+.badge-cat   { background: oklch(94% 0.04 300); color: oklch(38% 0.12 290); }
+.badge-fav   { background: var(--accent-lt); color: var(--accent); font-size: 11px; }
+.badge-stat  { background: var(--surface2); color: var(--ink-muted); border: 1px solid var(--border); }
+
+/* ── Example rows ── */
+.example-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px 10px;
+  margin-bottom: 5px;
+  align-items: baseline;
+}
+@media (max-width: 340px) {
+  .example-row { grid-template-columns: 1fr; }
+}
+.example-row:last-child { margin-bottom: 0; }
+.ex-fr {
+  font-size: 12px;
+  color: var(--ink-muted);
+  font-weight: 400;
+  line-height: 1.45;
+}
+.ex-nl {
+  font-size: 12px;
+  color: var(--ink-muted);
+  line-height: 1.45;
+}
+.sense-inline strong {
+  font-weight: 700;
+  color: var(--ink);
+}
+.word-divider {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 9px 0;
+}
+
+/* ── Word detail ── */
+.word-card-wrap { padding: 16px 14px 8px; background: var(--canvas); }
+.word-card {
+  background: var(--surface);
+  border-radius: var(--r);
+  box-shadow: var(--shadow);
+  padding: 22px 20px;
+  border: 1px solid var(--border);
+}
+.word-lemma {
+  font-size: 22px;
+  font-weight: 800;
+  text-align: center;
+  margin-bottom: 16px;
+  letter-spacing: -.02em;
+  color: var(--ink);
+}
+.detail-sense .ex-fr {
+  text-align: center;
+  font-size: 15px;
+  font-weight: 500;
+}
+.detail-sense .ex-nl {
+  text-align: center;
+  font-size: 13px;
+  color: var(--ink-muted);
+}
+.detail-sense .example-row {
+  grid-template-columns: 1fr;
+  gap: 4px;
+}
+.word-meta {
+  padding: 10px 14px 6px;
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.word-actions {
+  display: flex;
+  gap: 8px;
+  padding: 6px 14px 14px;
+  justify-content: center;
+}
+.action-btn {
+  padding: 8px 16px;
+  border: 1.5px solid var(--border-md);
+  border-radius: 24px;
+  background: var(--surface);
+  font-size: 13px;
+  color: var(--ink);
+  font-weight: 500;
+  font-family: var(--font-sans);
+}
+
+/* ── Lang icon SVG ── */
+.lang-icon-svg {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+/* ── Session columns ── */
+.session-col-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  overflow: hidden;
+}
+.session-col {
+  padding: 14px 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.session-col-fr {
+  border-right: 1px solid var(--border);
+  background: var(--surface);
+}
+.session-col-nl {
+  background: var(--canvas);
+}
+.session-col-hidden {
+  opacity: 0.3;
+}
+.session-col-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--ink-light);
+  font-family: var(--font-mono);
+}
+.session-col-phrase {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink);
+  line-height: 1.4;
+  letter-spacing: -.01em;
+}
+.session-col-nl .session-col-phrase {
+  color: var(--ink-muted);
+  font-weight: 500;
+}
+.session-col-subs {
+  font-size: 12px;
+  color: var(--ink-light);
+  line-height: 1.5;
+}
+
+/* ── Languages ── */
+.lang-section-header {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .1em;
+  color: var(--ink-light);
+  padding: 12px 18px 5px;
+  background: var(--canvas);
+  text-transform: uppercase;
+  font-family: var(--font-mono);
+}
+.lang-list { background: var(--surface); }
+.lang-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 18px;
+  border-bottom: 1px solid oklch(93% 0.008 240);
+}
+.lang-icon { font-size: 17px; width: 26px; text-align: center; display:none; }
+.lang-name { flex: 1; font-size: 14px; font-weight: 500; color: var(--ink); }
+.lang-count {
+  font-size: 12px;
+  color: var(--ink-light);
+  font-family: var(--font-mono);
+  background: var(--canvas);
+  padding: 2px 8px;
+  border-radius: 12px;
+}
+.lang-sub {
+  padding-left: 40px !important;
+  border-left: none;
+  background: var(--canvas);
+}
+.lang-sub .lang-name { font-size: 13px; color: var(--ink-muted); }
+.lang-sub .lang-count { font-size: 11px; }
+.lang-sub .lang-icon-svg {
+  width: 18px;
+  height: 18px;
+  opacity: 0.7;
+}
+
+/* ── Practice ── */
+.practice-body { padding: 12px; background: var(--canvas); }
+.lesson-row {
+  background: var(--surface);
+  border-radius: var(--r);
+  padding: 13px 14px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--border);
+  margin-bottom: 8px;
+}
+.lesson-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: var(--primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  flex-shrink: 0;
+  color: #fff;
+}
+.lesson-info { flex: 1; min-width: 0; }
+.lesson-name { font-weight: 600; font-size: 14px; color: var(--ink); letter-spacing: -.01em; }
+.lesson-desc {
+  font-size: 11px;
+  color: var(--ink-light);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 2px;
+  font-family: var(--font-mono);
+}
+.lesson-actions { display: flex; gap: 4px; }
+.lesson-btn {
+  background: none;
+  border: none;
+  font-size: 14px;
+  color: var(--ink-light);
+  padding: 4px 6px;
+  border-radius: 6px;
+  cursor: default;
+}
+.btn-add-lesson {
+  width: 100%;
+  padding: 12px;
+  border: 2px dashed var(--border-md);
+  border-radius: var(--r);
+  background: transparent;
+  font-size: 13px;
+  color: var(--primary);
+  font-weight: 600;
+  text-align: center;
+  font-family: var(--font-sans);
+}
+
+/* ── Session ── */
+.session-body {
+  padding: 14px 14px 0;
+  background: var(--canvas);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  min-height: 360px;
+}
+.session-progress {
+  width: 100%;
+  height: 3px;
+  background: var(--border);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.session-progress-fill {
+  height: 100%;
+  width: 5%;
+  background: var(--primary);
+  border-radius: 2px;
+}
+.session-card {
+  background: var(--surface);
+  border-radius: var(--r);
+  box-shadow: var(--shadow-md);
+  width: 100%;
+  border: 1px solid var(--border);
+  flex: 1;
+}
+.session-card-inner {
+  padding: 22px 18px 18px;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  min-height: 200px;
+  height: 100%;
+}
+.card-num {
+  font-size: 11px;
+  color: var(--ink-light);
+  font-weight: 600;
+  font-family: var(--font-mono);
+  margin-bottom: 14px;
+}
+.question-text {
+  font-size: 19px;
+  font-weight: 600;
+  text-align: center;
+  line-height: 1.5;
+  color: var(--ink);
+  letter-spacing: -.01em;
+}
+.answer-divider {
+  width: 100%;
+  border: none;
+  border-top: 1px solid var(--border);
+}
+.answer-text {
+  font-size: 15px;
+  color: var(--primary);
+  text-align: center;
+  line-height: 1.5;
+  font-weight: 500;
+}
+/* Show answer button — pinned to bottom of card */
+.session-card-actions {
+  margin-top: auto;
+  padding-top: 18px;
+  display: flex;
+  justify-content: center;
+}
+.btn-show-answer {
+  padding: 13px 28px;
+  border-radius: 28px;
+  background: var(--primary);
+  color: #fff;
+  border: none;
+  font-size: 15px;
+  font-weight: 600;
+  font-family: var(--font-sans);
+  box-shadow: 0 2px 8px oklch(46% 0.12 255 / .3);
+  width: 100%;
+  text-align: center;
+}
+/* Wrong/Right — pinned to bottom of screen */
+.session-bottom {
+  width: 100%;
+  padding: 10px 0 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.swipe-hint {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 0 2px;
+  color: var(--ink-light);
+  font-family: var(--font-mono);
+  letter-spacing: .04em;
+}
+.hint-wrong { color: var(--danger); }
+.hint-right { color: var(--success); }
+.swipe-buttons { display: flex; gap: 10px; width: 100%; }
+.btn-wrong {
+  flex: 1;
+  padding: 14px;
+  border-radius: 28px;
+  border: none;
+  font-size: 15px;
+  font-weight: 700;
+  background: var(--danger-lt);
+  color: var(--danger);
+  font-family: var(--font-sans);
+}
+.btn-right {
+  flex: 1;
+  padding: 14px;
+  border-radius: 28px;
+  border: none;
+  font-size: 15px;
+  font-weight: 700;
+  background: var(--success-lt);
+  color: var(--success);
+  font-family: var(--font-sans);
+}
+
+/* ── Results ── */
+.results-body { padding: 14px; background: var(--canvas); }
+.results-score {
+  background: var(--surface);
+  border-radius: var(--r);
+  padding: 24px 20px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--border);
+  margin-bottom: 10px;
+}
+.score-ring-wrap { flex-shrink: 0; }
+.score-ring {
+  width: 72px;
+  height: 72px;
+  transform: rotate(-90deg);
+}
+.score-ring circle {
+  fill: none;
+  stroke-width: 7;
+  stroke-linecap: round;
+}
+.score-ring .track { stroke: var(--border); }
+.score-ring .fill  { stroke: var(--primary); stroke-dasharray: 201; stroke-dashoffset: 50; }
+.score-center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 17px;
+  font-weight: 800;
+  color: var(--primary);
+}
+.score-ring-container { position: relative; width: 72px; height: 72px; }
+.score-details { flex: 1; }
+.score-right  { color: var(--success); font-size: 14px; font-weight: 600; margin-bottom: 3px; }
+.score-wrong  { color: var(--danger);  font-size: 14px; font-weight: 600; }
+.results-actions { display: flex; gap: 8px; margin-bottom: 10px; }
+.btn-result-action {
+  flex: 1;
+  padding: 10px 10px;
+  border: 1.5px solid var(--border-md);
+  border-radius: 24px;
+  background: var(--surface);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--primary);
+  text-align: center;
+  font-family: var(--font-sans);
+}
+.wrong-words-list {
+  background: var(--surface);
+  border-radius: var(--r);
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+.wrong-word-row {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  font-size: 12.5px;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-family: var(--font-mono);
+}
+.wrong-word-row:last-child { border-bottom: none; }
+
+/* ── Modal ── */
+.modal {
+  background: var(--surface);
+  border-radius: var(--r);
+  overflow: hidden;
+  box-shadow: var(--shadow-md);
+  border: 1px solid var(--border);
+}
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+.modal-header h2 { font-size: 15px; font-weight: 700; color: var(--ink); letter-spacing: -.01em; }
+.form-grid { padding: 14px 16px; display: flex; flex-direction: column; gap: 11px; }
+.form-grid label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--ink-muted);
+  text-transform: uppercase;
+  letter-spacing: .07em;
+  font-family: var(--font-mono);
+}
+.form-grid input, .form-grid select {
+  padding: 8px 10px;
+  border: 1.5px solid var(--border-md);
+  border-radius: var(--r-sm);
+  font-size: 13px;
+  color: var(--ink);
+  background: var(--canvas);
+  font-family: var(--font-sans);
+  width: 100%;
+}
+.form-row { display: flex; gap: 7px; }
+.form-row > label { flex: 1; }
+.form-section-label {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--ink-muted);
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  padding: 4px 0 2px;
+  border-top: 1px solid var(--border);
+  margin-top: 2px;
+  font-family: var(--font-mono);
+}
+.form-field-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.field-label { font-size: 13px; font-weight: 500; color: var(--ink); min-width: 54px; }
+.toggle-mock {
+  width: 38px;
+  height: 22px;
+  background: var(--border-md);
+  border-radius: 11px;
+  position: relative;
+  flex-shrink: 0;
+}
+.toggle-mock::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 4px rgba(0,0,0,.2);
+}
+.form-actions { display: flex; gap: 8px; justify-content: flex-end; padding-top: 4px; }
+.btn-primary {
+  padding: 9px 20px;
+  background: var(--primary);
+  color: #fff;
+  border: none;
+  border-radius: 24px;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: var(--font-sans);
+}
+.btn-secondary {
+  padding: 9px 20px;
+  background: var(--surface);
+  color: var(--ink-muted);
+  border: 1.5px solid var(--border-md);
+  border-radius: 24px;
+  font-size: 13px;
+  font-weight: 500;
+  font-family: var(--font-sans);
+}
+
+.edit-example-line {
+  margin-bottom: 4px;
+}
+.btn-add-example {
+  margin-top: 5px;
+  background: none;
+  border: 1.5px dashed var(--border-md);
+  border-radius: var(--r-xs);
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--primary);
+  font-family: var(--font-sans);
+  cursor: default;
+  width: 100%;
+  text-align: center;
+}
+
+/* ── Edit sense inline ── */
+.edit-sense-inline {
+  padding: 4px 0;
+}
+.edit-sense-num-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+.edit-sense-num {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  color: var(--ink-muted);
+  font-family: var(--font-mono);
+}
+.edit-field-label {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--ink-light);
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  font-family: var(--font-mono);
+  flex: 1;
+}
+  border: 1.5px solid var(--border-md);
+  border-radius: var(--r-sm);
+  padding: 10px;
+  background: var(--surface2);
+}
+.edit-sense-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.edit-sense-num {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  color: var(--ink-muted);
+  font-family: var(--font-mono);
+}
+.btn-remove-sense {
+  background: none;
+  border: none;
+  font-size: 12px;
+  color: var(--ink-light);
+  padding: 2px 5px;
+  border-radius: 4px;
+}
+.edit-sense-field {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin-bottom: 7px;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--ink-muted);
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  font-family: var(--font-mono);
+}
+.edit-sense-field input {
+  font-size: 13px;
+  padding: 6px 9px;
+  border: 1.5px solid var(--border-md);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  width: 100%;
+}
+.edit-sense-cols { display: flex; gap: 8px; }
+.edit-sense-cols > label {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--ink-muted);
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  font-family: var(--font-mono);
+}
+.edit-sense-cols input {
+  font-size: 12px;
+  padding: 6px 9px;
+  border: 1.5px solid var(--border-md);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  width: 100%;
+}
+.field-hint { font-weight: 400; text-transform: none; letter-spacing: 0; font-size: 10px; color: var(--ink-light); }
+.btn-add-sense {
+  width: 100%;
+  padding: 8px;
+  border: 1.5px dashed var(--border-md);
+  border-radius: var(--r-sm);
+  background: transparent;
+  font-size: 13px;
+  color: var(--primary);
+  font-weight: 600;
+  text-align: center;
+  font-family: var(--font-sans);
+}
+
+/* ── Edit word — inline card style ── */
+.edit-meta-bar {
+  display: flex;
+  gap: 6px;
+  padding: 8px 14px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+.edit-meta-select {
+  appearance: none;
+  -webkit-appearance: none;
+  border: 1.5px solid var(--border-md);
+  border-radius: 20px;
+  padding: 7px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: var(--font-mono);
+  background: var(--surface);
+  color: var(--ink);
+  cursor: pointer;
+  min-height: 36px;
+}
+.edit-meta-type  { background: var(--success-lt);  color: var(--success);    border-color: var(--success-lt); }
+.edit-meta-level { background: var(--primary-lt);  color: var(--primary-dk); border-color: var(--primary-lt); }
+.edit-meta-reg   { background: oklch(95% 0.04 80); color: oklch(40% 0.12 60); border-color: oklch(90% 0.04 80); }
+.edit-meta-cat   { background: oklch(94% 0.04 300); color: oklch(38% 0.12 290); border-color: oklch(90% 0.04 300); }
+
+.edit-lemma-input {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ink);
+  border: none;
+  border-bottom: 1.5px solid var(--border-md);
+  background: transparent;
+  outline: none;
+  padding: 0 0 2px;
+  width: 100%;
+  font-family: var(--font-sans);
+  letter-spacing: -.01em;
+}
+.edit-ex-input {
+  border: none;
+  border-bottom: 1.5px solid var(--border);
+  background: transparent;
+  outline: none;
+  padding: 0 0 2px;
+  width: 100%;
+  font-family: var(--font-sans);
+  font-size: 13px;
+  line-height: 1.45;
+}
+.edit-ex-input.ex-fr {
+  font-weight: 500;
+  color: var(--ink);
+}
+.edit-ex-input.ex-nl {
+  color: var(--ink-muted);
+}
+.edit-ex-input:focus {
+  border-bottom-color: var(--primary);
+}
+.edit-sense-inline {
+  padding: 4px 0;
+}
+
+/* ── Lesson icon SVG (flat, same size as lang icons) ── */
+.lesson-icon-svg {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  background: var(--primary-lt);
+  border-radius: 8px;
+  padding: 4px;
+}
+
+/* ── Annotation ── */
+.annotation {
+  margin-top: 10px;
+  font-size: 11px;
+  color: var(--ink-muted);
+  line-height: 1.5;
+  max-width: 358px;
+}
+.annotation strong { color: var(--ink); font-weight: 600; }
+</style>
+</head>
+<body>
+
+<!-- PAGE HEADER -->
+<div class="page-header">
+  <div>
+    <div class="page-title"><span>Frans</span>App — Design Review</div>
+    <div class="page-sub">All screens · May 2026</div>
+  </div>
+  <nav class="section-nav">
+    <a href="#s1">Word List</a>
+    <a href="#s2">Word Detail</a>
+    <a href="#s3">Languages</a>
+    <a href="#s4">Practice</a>
+    <a href="#s5">Session</a>
+    <a href="#s6">Results</a>
+    <a href="#s7">Edit Word</a>
+  </nav>
+</div>
+
+<div class="content">
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<div class="section-block" id="s1">
+  <div class="section-heading">
+    <span class="section-num">01</span>
+    <span class="section-title">Vocabulary — Word List</span>
+    <div class="section-line"></div>
+  </div>
+  <div class="screens">
+
+    <div class="screen">
+      <div class="screen-label">1a · Overview</div>
+      <div class="topbar">
+        <div class="icon-btn">☰</div>
+        <div class="topbar-title">All Words</div>
+        <div class="icon-btn" style="color:var(--primary);font-weight:700">+ Add</div>
+      </div>
+      <div class="search-bar-wrap">
+        <div class="search-input">🔍&ensp;Search words…</div>
+      </div>
+      <div class="filter-bar">
+        <div class="filter-selects">
+          <select class="filter-select"><option>All languages</option></select>
+          <select class="filter-select"><option>All categories</option></select>
+        </div>
+        <div class="pill-bar">
+          <div class="pill active">All</div>
+          <div class="pill">1</div><div class="pill">2</div><div class="pill">3</div>
+          <div class="pill">4</div><div class="pill">5</div>
+        </div>
+      </div>
+      <div class="word-list">
+
+        <div class="word-card-row">
+          <div class="word-card-header">
+            <span class="word-lemma-header">chavirer</span>
+            <span class="badge badge-type">verb</span>
+            <span class="badge badge-level">L1</span>
+          </div>
+          <div class="example-row">
+            <span class="ex-fr sense-inline"><strong>se renverser</strong> · le bateau a chaviré — la barque a chaviré dans la tempête</span>
+            <span class="ex-nl sense-inline"><strong>kapseizen</strong> · de boot is gekapseisd — de sloep sloeg om</span>
+          </div>
+          <div class="example-row">
+            <span class="ex-fr sense-inline"><strong>être bouleversé</strong> · son cœur a chaviré en la voyant — ce sourire m'a chaviré</span>
+            <span class="ex-nl sense-inline"><strong>ontroerd raken</strong> · zijn hart sloeg over — die glimlach heeft me omvergegooid</span>
+          </div>
+        </div>
+
+        <div class="word-card-row">
+          <div class="word-card-header">
+            <span class="word-lemma-header">nerf</span>
+            <span class="badge badge-type">noun·m</span>
+            <span class="badge badge-level">L2</span>
+          </div>
+          <div class="example-row">
+            <span class="ex-fr sense-inline"><strong>nerf</strong> · avoir les nerfs à fleur de peau</span>
+            <span class="ex-nl sense-inline"><strong>zenuw</strong> · zenuwen tot het uiterste</span>
+          </div>
+          <div class="example-row">
+            <span class="ex-fr sense-inline"><strong>nerf, vigueur</strong> · ce cheval a du nerf</span>
+            <span class="ex-nl sense-inline"><strong>pit, kracht</strong> · dat paard heeft pit</span>
+          </div>
+        </div>
+
+        <div class="word-card-row">
+          <div class="word-card-header">
+            <span class="word-lemma-header">itou</span>
+            <span class="badge badge-type">adverb</span>
+            <span class="badge badge-level">L2</span>
+            <span class="badge badge-reg">fam</span>
+          </div>
+          <div class="example-row">
+            <span class="ex-fr sense-inline"><strong>aussi</strong> · moi itou — et toi itou</span>
+            <span class="ex-nl sense-inline"><strong>ook</strong> · ik ook — en jij dan</span>
+          </div>
+        </div>
+
+        <div class="word-card-row">
+          <div class="word-card-header">
+            <span class="word-lemma-header">bibelot</span>
+            <span class="badge badge-type">noun·m</span>
+            <span class="badge badge-level">L1</span>
+            <span class="badge badge-cat">Amis</span>
+            <span class="badge badge-fav">★</span>
+          </div>
+          <div class="example-row">
+            <span class="ex-fr sense-inline"><strong>babiole, colifichet</strong> · une étagère pleine de bibelots</span>
+            <span class="ex-nl sense-inline"><strong>snuisterij</strong> · plank vol snuisterijen</span>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <div class="annotation">
+      <strong>Changes:</strong> Sense label pulled out of the Dutch column and shown as a bold full-width line above each example row — same weight as the lemma. FR and NL examples aligned in a two-column grid below. Level badge moved after type. Gender merged into type badge (noun·m).
+    </div>
+
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<div class="section-block" id="s2">
+  <div class="section-heading">
+    <span class="section-num">02</span>
+    <span class="section-title">Word Detail</span>
+    <div class="section-line"></div>
+  </div>
+  <div class="screens">
+
+    <div class="screen">
+      <div class="screen-label">2a · Single sense</div>
+      <div class="topbar">
+        <div class="icon-btn">← Back</div>
+        <div class="topbar-title">chavirer</div>
+        <div class="icon-btn">☆</div>
+      </div>
+      <div class="word-card-wrap">
+        <div class="word-card">
+          <div class="word-lemma">chavirer <span style="font-weight:300;color:var(--ink-muted);font-size:16px">[v]</span></div>
+          <div class="detail-sense">
+            <div class="example-row">
+              <span class="ex-fr" style="text-align:center;font-size:15px;font-style:italic">le bateau a chaviré</span>
+            </div>
+            <div style="text-align:center;font-size:13px;color:var(--ink-muted);margin-bottom:4px">kapseizen, omslaan</div>
+            <div style="text-align:center;font-size:12px;color:var(--ink-light)">de boot is gekapseisd</div>
+          </div>
+          <hr class="word-divider" />
+          <div class="detail-sense">
+            <div class="example-row">
+              <span class="ex-fr" style="text-align:center;font-size:15px;font-style:italic">son cœur a chaviré en la voyant</span>
+            </div>
+            <div style="text-align:center;font-size:13px;color:var(--ink-muted);margin-bottom:4px">ontroerd raken</div>
+            <div style="text-align:center;font-size:12px;color:var(--ink-light)">zijn hart sloeg over toen hij haar zag</div>
+          </div>
+        </div>
+      </div>
+      <div class="word-meta">
+        <span class="badge badge-type">verb</span>
+        <span class="badge badge-level">Level 1</span>
+        <span class="badge badge-cat">Frans</span>
+        <span class="badge badge-stat">not yet tested</span>
+      </div>
+      <div class="word-actions">
+        <div class="action-btn">Edit</div>
+        <div class="action-btn" style="color:var(--danger);border-color:var(--danger-lt)">Delete</div>
+        <div class="action-btn">↑ Level</div>
+      </div>
+    </div>
+
+    <div class="screen">
+      <div class="screen-label">2b · After testing</div>
+      <div class="topbar">
+        <div class="icon-btn">← Back</div>
+        <div class="topbar-title">nerf</div>
+        <div class="icon-btn" style="color:var(--accent)">★</div>
+      </div>
+      <div class="word-card-wrap">
+        <div class="word-card">
+          <div class="word-lemma">nerf <span style="font-weight:300;color:var(--ink-muted);font-size:16px">[m]</span></div>
+          <div class="detail-sense">
+            <div class="example-row">
+              <span class="ex-fr" style="text-align:center;font-size:14px;font-style:italic">avoir les nerfs à fleur de peau — taper sur les nerfs de quelqu'un</span>
+            </div>
+            <div style="text-align:center;font-size:13px;color:var(--ink-muted);margin-bottom:4px">zenuw, irritatie</div>
+            <div style="text-align:center;font-size:12px;color:var(--ink-light)">de zenuwen gespannen — iemand op de zenuwen werken</div>
+          </div>
+          <hr class="word-divider" />
+          <div class="detail-sense">
+            <div class="example-row">
+              <span class="ex-fr" style="text-align:center;font-size:14px;font-style:italic">ce cheval a du nerf</span>
+            </div>
+            <div style="text-align:center;font-size:13px;color:var(--ink-muted);margin-bottom:4px">pit, kracht</div>
+            <div style="text-align:center;font-size:12px;color:var(--ink-light)">dat paard heeft pit</div>
+          </div>
+        </div>
+      </div>
+      <div class="word-meta">
+        <span class="badge badge-type">noun·m</span>
+        <span class="badge badge-level">Level 3</span>
+        <span class="badge badge-cat">Frans</span>
+        <span class="badge badge-stat" style="color:var(--success);border-color:var(--success-lt);background:var(--success-lt)">✓ 4/5 · 80%</span>
+      </div>
+      <div class="word-actions">
+        <div class="action-btn">Edit</div>
+        <div class="action-btn" style="color:var(--danger);border-color:var(--danger-lt)">Delete</div>
+        <div class="action-btn">↑ Level</div>
+      </div>
+    </div>
+
+    <div class="annotation">
+      <strong>Changes:</strong> French example in italic to distinguish it from the translation. Translation shown on its own line between FR and NL example. Delete button now uses danger color inline. Score badge uses success color when tested. Lemma type indicator is lighter weight.
+    </div>
+
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<div class="section-block" id="s3">
+  <div class="section-heading">
+    <span class="section-num">03</span>
+    <span class="section-title">Language &amp; Category Selection</span>
+    <div class="section-line"></div>
+  </div>
+  <div class="screens">
+
+    <div class="screen">
+      <div class="screen-label">3 · Languages</div>
+      <div class="topbar">
+        <div class="icon-btn">← Back</div>
+        <div class="topbar-title">Languages</div>
+        <span></span>
+      </div>
+      <div class="lang-section-header">Collections</div>
+      <div class="lang-list">
+        <div class="lang-row">
+          <span class="lang-icon-svg">
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><rect x="2" y="2" width="14" height="14" rx="2.5" fill="var(--primary-lt)"/><path d="M5 5.5h5M5 8h8M5 10.5h6M5 13h4" stroke="var(--primary)" stroke-width="1.4" stroke-linecap="round"/></svg>
+          </span>
+          <span class="lang-name">All Words</span><span class="lang-count">4071</span>
+        </div>
+        <div class="lang-row">
+          <span class="lang-icon-svg">
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M9 2.5l1.8 3.6 4 .58-2.9 2.83.68 4L9 11.4l-3.58 1.88.68-4L3.2 6.68l4-.58L9 2.5z" fill="var(--accent-lt)" stroke="var(--accent)" stroke-width="1.2" stroke-linejoin="round"/></svg>
+          </span>
+          <span class="lang-name">Favorites</span><span class="lang-count">12</span>
+        </div>
+        <div class="lang-row">
+          <span class="lang-icon-svg">
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><circle cx="9" cy="9" r="6.5" fill="var(--primary-lt)" stroke="var(--primary)" stroke-width="1.2"/><path d="M9 5.5v3.8l2.5 1.5" stroke="var(--primary)" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </span>
+          <span class="lang-name">Recently added</span><span class="lang-count">25</span>
+        </div>
+      </div>
+      <div class="lang-section-header">Languages</div>
+      <div class="lang-list">
+        <div class="lang-row">
+          <span class="lang-icon-svg">
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><circle cx="9" cy="9" r="6.5" fill="none" stroke="var(--primary)" stroke-width="1.2"/><ellipse cx="9" cy="9" rx="3" ry="6.5" stroke="var(--primary)" stroke-width="1.2"/><path d="M2.5 9h13M3 6h12M3 12h12" stroke="var(--primary)" stroke-width="1" stroke-linecap="round"/></svg>
+          </span>
+          <span class="lang-name" style="font-weight:600">Frans</span>
+          <span class="lang-count">4071</span>
+        </div>
+        <div class="lang-row lang-sub"><span class="lang-icon-svg"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M1 3.5C1 2.67 1.67 2 2.5 2h2.38c.32 0 .62.13.84.35L6.5 3H11.5c.83 0 1.5.67 1.5 1.5v6c0 .83-.67 1.5-1.5 1.5h-9C1.67 12 1 11.33 1 10.5V3.5z" fill="var(--primary-lt)" stroke="var(--primary-mid)" stroke-width="1"/></svg></span><span class="lang-name">Amis</span><span class="lang-count">57</span></div>
+        <div class="lang-row lang-sub"><span class="lang-icon-svg"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M1 3.5C1 2.67 1.67 2 2.5 2h2.38c.32 0 .62.13.84.35L6.5 3H11.5c.83 0 1.5.67 1.5 1.5v6c0 .83-.67 1.5-1.5 1.5h-9C1.67 12 1 11.33 1 10.5V3.5z" fill="var(--primary-lt)" stroke="var(--primary-mid)" stroke-width="1"/></svg></span><span class="lang-name">Ickabog</span><span class="lang-count">536</span></div>
+        <div class="lang-row lang-sub"><span class="lang-icon-svg"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M1 3.5C1 2.67 1.67 2 2.5 2h2.38c.32 0 .62.13.84.35L6.5 3H11.5c.83 0 1.5.67 1.5 1.5v6c0 .83-.67 1.5-1.5 1.5h-9C1.67 12 1 11.33 1 10.5V3.5z" fill="var(--primary-lt)" stroke="var(--primary-mid)" stroke-width="1"/></svg></span><span class="lang-name">Notes</span><span class="lang-count">204</span></div>
+        <div class="lang-row lang-sub"><span class="lang-icon-svg"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M1 3.5C1 2.67 1.67 2 2.5 2h2.38c.32 0 .62.13.84.35L6.5 3H11.5c.83 0 1.5.67 1.5 1.5v6c0 .83-.67 1.5-1.5 1.5h-9C1.67 12 1 11.33 1 10.5V3.5z" fill="var(--primary-lt)" stroke="var(--primary-mid)" stroke-width="1"/></svg></span><span class="lang-name">Without Category</span><span class="lang-count">3274</span></div>
+      </div>
+    </div>
+
+    <div class="annotation">
+      <strong>Changes:</strong> Active language row highlighted with primary tint. Count pills now pill-shaped, mono font for numbers. Subcategory rows tighter indent without orphaned icon placeholder.
+    </div>
+
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<div class="section-block" id="s4">
+  <div class="section-heading">
+    <span class="section-num">04</span>
+    <span class="section-title">Practice</span>
+    <div class="section-line"></div>
+  </div>
+  <div class="screens">
+
+    <div class="screen">
+      <div class="screen-label">4a · Lesson list</div>
+      <div class="topbar">
+        <div class="icon-btn">☰</div>
+        <div class="topbar-title">Practice</div>
+        <span></span>
+      </div>
+      <div class="practice-body">
+        <div class="lesson-row">
+          <div class="lesson-icon-svg">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+              <!-- mini teacher: head + body + pointer -->
+              <circle cx="10" cy="5" r="2.5" fill="var(--primary)"/>
+              <path d="M6 18v-4.5c0-1.1.9-2 2-2h4c1.1 0 2 .9 2 2V18" stroke="var(--primary)" stroke-width="1.5" stroke-linecap="round"/>
+              <path d="M13 10l3-3" stroke="var(--primary)" stroke-width="1.5" stroke-linecap="round"/>
+              <circle cx="16.5" cy="6.5" r="1" fill="var(--primary)"/>
+            </svg>
+          </div>
+          <div class="lesson-info">
+            <div class="lesson-name">Train FR</div>
+            <div class="lesson-desc">Frans · L1–2 · 20 words · vocabulary</div>
+          </div>
+          <div class="lesson-actions">
+            <div class="lesson-btn">✏</div>
+            <div class="lesson-btn">🗑</div>
+          </div>
+        </div>
+        <div class="lesson-row">
+          <div class="lesson-icon-svg">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+              <circle cx="10" cy="5" r="2.5" fill="var(--primary)"/>
+              <path d="M6 18v-4.5c0-1.1.9-2 2-2h4c1.1 0 2 .9 2 2V18" stroke="var(--primary)" stroke-width="1.5" stroke-linecap="round"/>
+              <path d="M13 10l3-3" stroke="var(--primary)" stroke-width="1.5" stroke-linecap="round"/>
+              <circle cx="16.5" cy="6.5" r="1" fill="var(--primary)"/>
+            </svg>
+          </div>
+          <div class="lesson-info">
+            <div class="lesson-name">Train NL</div>
+            <div class="lesson-desc">Frans · L3–4 · 20 words · translation</div>
+          </div>
+          <div class="lesson-actions">
+            <div class="lesson-btn">✏</div>
+            <div class="lesson-btn">🗑</div>
+          </div>
+        </div>
+        <div class="btn-add-lesson">＋ Add new lesson</div>
+      </div>
+    </div>
+
+    <div class="screen">
+      <div class="screen-label">4b · Create lesson</div>
+      <div class="modal">
+        <div class="modal-header">
+          <h2>New Lesson</h2>
+          <div class="icon-btn" style="color:var(--ink-light)">✕</div>
+        </div>
+        <div class="form-grid">
+          <label>Name<input placeholder="e.g. Train FR vocab" /></label>
+          <div class="form-section-label">Content</div>
+          <div class="form-row">
+            <label>Language<select><option selected>Frans</option><option>All</option></select></label>
+            <label>Category<select><option>All</option><option>Ickabog</option></select></label>
+          </div>
+          <div class="form-field-row">
+            <span class="field-label">Levels</span>
+            <div class="pill-bar">
+              <div class="pill active">1</div><div class="pill active">2</div>
+              <div class="pill">3</div><div class="pill">4</div><div class="pill">5</div>
+            </div>
+          </div>
+          <div class="form-field-row">
+            <span class="field-label">Amount</span>
+            <div class="pill-bar">
+              <div class="pill">10</div><div class="pill">15</div>
+              <div class="pill active">20</div><div class="pill">30</div><div class="pill">50</div>
+            </div>
+          </div>
+          <div class="form-section-label">Options</div>
+          <div class="form-field-row">
+            <span class="field-label">Ask for</span>
+            <div class="pill-bar">
+              <div class="pill active">Vocab</div>
+              <div class="pill">Translation</div>
+              <div class="pill">Mixed</div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;justify-content:space-between;font-size:13px;color:var(--ink)">
+            <span>Ask until all correct</span>
+            <div class="toggle-mock"></div>
+          </div>
+          <div class="form-actions">
+            <div class="btn-secondary">Cancel</div>
+            <div class="btn-primary">Save</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="annotation">
+      <strong>Changes:</strong> Lesson description uses interpunct separators instead of commas for readability. Lesson icon uses rounded rect (not circle). Form condensed: Language + Category on one row. Label text shortened ("Ask until all correct").
+    </div>
+
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<div class="section-block" id="s5">
+  <div class="section-heading">
+    <span class="section-num">05</span>
+    <span class="section-title">Lesson Session</span>
+    <div class="section-line"></div>
+  </div>
+  <div class="screens">
+
+    <!-- 5a: Train FR — question (NL hidden) -->
+    <div class="screen">
+      <div class="screen-label">5a · Train FR — question</div>
+      <div class="topbar">
+        <div class="icon-btn" style="color:var(--ink-muted)">✕</div>
+        <div class="topbar-title" style="font-size:14px;color:var(--ink-muted);font-weight:500">Train FR · 1 of 20</div>
+        <div class="icon-btn btn-danger-text" style="font-size:13px">End</div>
+      </div>
+      <div class="session-body">
+        <div class="session-progress"><div class="session-progress-fill"></div></div>
+        <div class="session-card">
+          <div class="session-card-inner">
+            <div class="card-num">card 1 / 20</div>
+            <div class="word-card-row" style="box-shadow:none;border:none;padding:10px 2px;">
+              <div class="word-card-header">
+                <span class="word-lemma-header">chavirer</span>
+              </div>
+              <div class="example-row">
+                <span class="ex-fr sense-inline"><strong>se renverser</strong> · le bateau a chaviré — la barque a chaviré dans la tempête</span>
+                <span class="ex-nl sense-inline" style="opacity:0;user-select:none"><strong>kapseizen</strong> · de boot is gekapseisd — de sloep sloeg om</span>
+              </div>
+              <div class="example-row">
+                <span class="ex-fr sense-inline"><strong>être bouleversé</strong> · son cœur a chaviré en la voyant — ce sourire m'a chaviré</span>
+                <span class="ex-nl sense-inline" style="opacity:0;user-select:none"><strong>ontroerd raken</strong> · zijn hart sloeg over — die glimlach heeft me omvergegooid</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="session-bottom">
+          <div class="swipe-buttons">
+            <div class="btn-show-answer">Show Answer</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 5b: Train FR — answer revealed -->
+    <div class="screen">
+      <div class="screen-label">5b · Train FR — revealed</div>
+      <div class="topbar">
+        <div class="icon-btn" style="color:var(--ink-muted)">✕</div>
+        <div class="topbar-title" style="font-size:14px;color:var(--ink-muted);font-weight:500">Train FR · 1 of 20</div>
+        <div class="icon-btn btn-danger-text" style="font-size:13px">End</div>
+      </div>
+      <div class="session-body">
+        <div class="session-progress"><div class="session-progress-fill"></div></div>
+        <div class="session-card">
+          <div class="session-card-inner">
+            <div class="card-num">card 1 / 20</div>
+            <div class="word-card-row" style="box-shadow:none;border:none;padding:10px 2px;">
+              <div class="word-card-header">
+                <span class="word-lemma-header">chavirer</span>
+              </div>
+              <div class="example-row">
+                <span class="ex-fr sense-inline"><strong>se renverser</strong> · le bateau a chaviré — la barque a chaviré dans la tempête</span>
+                <span class="ex-nl sense-inline"><strong>kapseizen</strong> · de boot is gekapseisd — de sloep sloeg om</span>
+              </div>
+              <div class="example-row">
+                <span class="ex-fr sense-inline"><strong>être bouleversé</strong> · son cœur a chaviré en la voyant — ce sourire m'a chaviré</span>
+                <span class="ex-nl sense-inline"><strong>ontroerd raken</strong> · zijn hart sloeg over — die glimlach heeft me omvergegooid</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="session-bottom">
+          <div class="swipe-buttons">
+            <div class="btn-wrong">✗ Wrong</div>
+            <div class="btn-right">✓ Right</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 5c: Train NL — question (FR hidden) -->
+    <div class="screen">
+      <div class="screen-label">5c · Train NL — question</div>
+      <div class="topbar">
+        <div class="icon-btn" style="color:var(--ink-muted)">✕</div>
+        <div class="topbar-title" style="font-size:14px;color:var(--ink-muted);font-weight:500">Train NL · 1 of 20</div>
+        <div class="icon-btn btn-danger-text" style="font-size:13px">End</div>
+      </div>
+      <div class="session-body">
+        <div class="session-progress"><div class="session-progress-fill"></div></div>
+        <div class="session-card">
+          <div class="session-card-inner">
+            <div class="card-num">card 1 / 20</div>
+            <div class="word-card-row" style="box-shadow:none;border:none;padding:10px 2px;">
+              <div class="word-card-header">
+                <span class="word-lemma-header" style="opacity:0;user-select:none">chavirer</span>
+              </div>
+              <div class="example-row">
+                <span class="ex-fr sense-inline" style="opacity:0;user-select:none"><strong>se renverser</strong> · le bateau a chaviré — la barque a chaviré dans la tempête</span>
+                <span class="ex-nl sense-inline"><strong>kapseizen</strong> · de boot is gekapseisd — de sloep sloeg om</span>
+              </div>
+              <div class="example-row">
+                <span class="ex-fr sense-inline" style="opacity:0;user-select:none"><strong>être bouleversé</strong> · son cœur a chaviré en la voyant — ce sourire m'a chaviré</span>
+                <span class="ex-nl sense-inline"><strong>ontroerd raken</strong> · zijn hart sloeg over — die glimlach heeft me omvergegooid</span>
+              </div>
+            </div>
+            <div class="session-card-actions" style="display:none"></div>
+          </div>
+        </div>
+        <div class="session-bottom">
+          <div class="swipe-buttons">
+            <div class="btn-show-answer">Show Answer</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="annotation">
+      <strong>Changes:</strong> Session cards use the identical word-list row format — bold sense · example on both sides. Train FR hides the NL column until answer is revealed. Train NL hides both the French lemma and the FR column. "Show Answer" and Wrong/Right buttons are both outside the card in the same bottom area — no duplicate hint labels.
+    </div>
+
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<div class="section-block" id="s6">
+  <div class="section-heading">
+    <span class="section-num">06</span>
+    <span class="section-title">Results</span>
+    <div class="section-line"></div>
+  </div>
+  <div class="screens">
+
+    <div class="screen">
+      <div class="screen-label">6 · Results</div>
+      <div class="topbar">
+        <span></span>
+        <div class="topbar-title">Results</div>
+        <div class="icon-btn" style="font-weight:700">Done</div>
+      </div>
+      <div class="results-body">
+        <div class="results-score">
+          <div class="score-ring-container">
+            <svg class="score-ring" viewBox="0 0 72 72">
+              <circle class="track" cx="36" cy="36" r="32" />
+              <circle class="fill" cx="36" cy="36" r="32" stroke-dasharray="201" stroke-dashoffset="50" />
+            </svg>
+            <div class="score-center">75%</div>
+          </div>
+          <div class="score-details">
+            <div class="score-right">✓ &thinsp;15 correct</div>
+            <div class="score-wrong">✗ &thinsp;5 incorrect</div>
+            <div style="font-size:11px;color:var(--ink-light);margin-top:6px;font-family:var(--font-mono)">Train FR · 20 words</div>
+          </div>
+        </div>
+        <div class="results-actions">
+          <div class="btn-result-action">↺ Repeat</div>
+          <div class="btn-result-action">✗ Wrong words only</div>
+        </div>
+        <div class="lang-section-header">Words to review</div>
+        <div class="wrong-words-list">
+          <div class="wrong-word-row">mourir à petit feu — dans la solitude</div>
+          <div class="wrong-word-row">accaparer — le pouvoir — l'attention</div>
+          <div class="wrong-word-row">bigarré [adj] — une ville bigarrée</div>
+          <div class="wrong-word-row">à la faveur de — il s'est enfui…</div>
+          <div class="wrong-word-row">sournois — un sourire sournois</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="annotation">
+      <strong>Changes:</strong> Score ring replaces the raw percentage number — gives visual weight without data slop. Session name shown in score card. Section label changed to "Words to review" (more actionable). Wrong word list uses mono font for FR content.
+    </div>
+
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<div class="section-block" id="s7">
+  <div class="section-heading">
+    <span class="section-num">07</span>
+    <span class="section-title">Edit Word</span>
+    <div class="section-line"></div>
+  </div>
+  <div class="screens">
+
+    <div class="screen">
+      <div class="screen-label">7 · Edit word</div>
+      <div class="topbar">
+        <div class="icon-btn">← Back</div>
+        <div class="topbar-title">chavirer</div>
+        <div class="icon-btn" style="color:var(--primary);font-weight:700">Save</div>
+      </div>
+      <!-- Metadata bar — editable selects styled like the badge row -->
+      <div class="edit-meta-bar">
+        <select class="edit-meta-select edit-meta-type"><option>verb</option><option>noun</option><option>adverb</option><option>adjective</option><option>phrase</option></select>
+        <select class="edit-meta-select edit-meta-level"><option>L1</option><option>L2</option><option>L3</option><option>L4</option><option>L5</option></select>
+        <select class="edit-meta-select edit-meta-reg"><option value="">—</option><option>fam</option><option>lit</option><option>sout</option><option>vulg</option></select>
+        <select class="edit-meta-select edit-meta-cat"><option value="">no category</option><option>Amis</option><option>Ickabog</option><option>Notes</option></select>
+      </div>
+      <!-- Word list — same card layout, but inputs instead of text -->
+      <div class="word-list">
+
+        <!-- Lemma header row — editable -->
+        <div class="word-card-row">
+          <div class="word-card-header" style="margin-bottom:10px">
+            <input class="edit-lemma-input" value="chavirer" />
+          </div>
+
+          <!-- Sense 1 -->
+          <div class="edit-sense-inline">
+            <div class="edit-sense-num-row">
+              <span class="edit-sense-num">Sense 1</span>
+              <span class="btn-remove-sense">✕</span>
+            </div>
+            <!-- Sense FR / NL — no headers, just side by side -->
+            <div class="example-row" style="margin-bottom:8px">
+              <input class="edit-ex-input ex-fr" value="se renverser" placeholder="sens FR…" />
+              <input class="edit-ex-input ex-nl" value="kapseizen" placeholder="zin NL…" />
+            </div>
+            <!-- Examples header row -->
+            <div class="example-row" style="margin-bottom:3px">
+              <span class="edit-field-label">Example FR</span>
+              <span class="edit-field-label">Example NL</span>
+            </div>
+            <!-- Example lines -->
+            <div class="example-row edit-example-line">
+              <input class="edit-ex-input ex-fr" value="le bateau a chaviré" />
+              <input class="edit-ex-input ex-nl" value="de boot is gekapseisd" />
+            </div>
+            <div class="example-row edit-example-line">
+              <input class="edit-ex-input ex-fr" value="la barque a chaviré dans la tempête" />
+              <input class="edit-ex-input ex-nl" value="de sloep sloeg om" />
+            </div>
+            <button class="btn-add-example">＋ example</button>
+          </div>
+
+          <hr class="word-divider" />
+
+          <!-- Sense 2 -->
+          <div class="edit-sense-inline">
+            <div class="edit-sense-num-row">
+              <span class="edit-sense-num">Sense 2</span>
+              <span class="btn-remove-sense">✕</span>
+            </div>
+            <div class="example-row" style="margin-bottom:8px">
+              <input class="edit-ex-input ex-fr" value="être bouleversé" placeholder="sens FR…" />
+              <input class="edit-ex-input ex-nl" value="ontroerd raken" placeholder="zin NL…" />
+            </div>
+            <div class="example-row" style="margin-bottom:3px">
+              <span class="edit-field-label">Example FR</span>
+              <span class="edit-field-label">Example NL</span>
+            </div>
+            <div class="example-row edit-example-line">
+              <input class="edit-ex-input ex-fr" value="son cœur a chaviré en la voyant" />
+              <input class="edit-ex-input ex-nl" value="zijn hart sloeg over" />
+            </div>
+            <div class="example-row edit-example-line">
+              <input class="edit-ex-input ex-fr" value="ce sourire m'a chaviré" />
+              <input class="edit-ex-input ex-nl" value="die glimlach heeft me omvergegooid" />
+            </div>
+            <button class="btn-add-example">＋ example</button>
+          </div>
+
+          <!-- Add sense -->
+          <div style="margin-top:10px">
+            <div class="btn-add-sense" style="font-size:12px;padding:6px">＋ Add sense</div>
+          </div>
+        </div>
+
+      </div>
+      <!-- Bottom actions -->
+      <div style="display:flex;gap:8px;padding:12px 14px;border-top:1px solid var(--border);background:var(--surface)">
+        <div class="action-btn" style="color:var(--danger);border-color:var(--danger-lt);flex:1;text-align:center">Delete word</div>
+      </div>
+    </div>
+
+    <div class="annotation">
+      <strong>Changes:</strong> Edit screen senses now show FR/NL meaning inputs side by side without headers, then "Example FR / Example NL" column headers above individual example rows — one per line, each with a remove button implicit in the row. An "＋ example" button adds more rows per sense.
+    </div>
+
+  </div>
+</div>
+
+</div><!-- /content -->
+
+<!-- React + Babel -->
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+<script type="text/babel" data-presets="react">
+// ── Tweaks panel (inlined) ──────────────────────────────────────────────────
+const __TWEAKS_STYLE = `
+  .twk-panel{position:fixed;right:16px;bottom:16px;z-index:2147483646;width:280px;
+    max-height:calc(100vh - 32px);display:flex;flex-direction:column;
+    transform:scale(var(--dc-inv-zoom,1));transform-origin:bottom right;
+    background:rgba(250,249,247,.85);color:#29261b;
+    -webkit-backdrop-filter:blur(24px) saturate(160%);backdrop-filter:blur(24px) saturate(160%);
+    border:.5px solid rgba(255,255,255,.6);border-radius:14px;
+    box-shadow:0 1px 0 rgba(255,255,255,.5) inset,0 12px 40px rgba(0,0,0,.18);
+    font:11.5px/1.4 ui-sans-serif,system-ui,-apple-system,sans-serif;overflow:hidden}
+  .twk-hd{display:flex;align-items:center;justify-content:space-between;
+    padding:10px 8px 10px 14px;cursor:move;user-select:none}
+  .twk-hd b{font-size:12px;font-weight:600;letter-spacing:.01em}
+  .twk-x{appearance:none;border:0;background:transparent;color:rgba(41,38,27,.55);
+    width:22px;height:22px;border-radius:6px;cursor:default;font-size:13px;line-height:1}
+  .twk-x:hover{background:rgba(0,0,0,.06);color:#29261b}
+  .twk-body{padding:2px 14px 14px;display:flex;flex-direction:column;gap:10px;
+    overflow-y:auto;min-height:0}
+  .twk-row{display:flex;flex-direction:column;gap:5px}
+  .twk-row-h{flex-direction:row;align-items:center;justify-content:space-between;gap:10px}
+  .twk-lbl{display:flex;justify-content:space-between;align-items:baseline;color:rgba(41,38,27,.72)}
+  .twk-lbl>span:first-child{font-weight:500}
+  .twk-val{color:rgba(41,38,27,.5);font-variant-numeric:tabular-nums}
+  .twk-sect{font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;
+    color:rgba(41,38,27,.45);padding:10px 0 0}
+  .twk-sect:first-child{padding-top:0}
+  .twk-field{appearance:none;width:100%;height:26px;padding:0 8px;
+    border:.5px solid rgba(0,0,0,.1);border-radius:7px;
+    background:rgba(255,255,255,.6);color:inherit;font:inherit;outline:none}
+  select.twk-field{padding-right:22px;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path fill='rgba(0,0,0,.5)' d='M0 0h10L5 6z'/></svg>");background-repeat:no-repeat;background-position:right 8px center}
+  .twk-slider{appearance:none;-webkit-appearance:none;width:100%;height:4px;margin:6px 0;
+    border-radius:999px;background:rgba(0,0,0,.12);outline:none}
+  .twk-slider::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;
+    background:#fff;border:.5px solid rgba(0,0,0,.12);box-shadow:0 1px 3px rgba(0,0,0,.2);cursor:default}
+  .twk-toggle{position:relative;width:32px;height:18px;border:0;border-radius:999px;
+    background:rgba(0,0,0,.15);transition:background .15s;cursor:default;padding:0}
+  .twk-toggle[data-on="1"]{background:#34c759}
+  .twk-toggle i{position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;
+    background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.25);transition:transform .15s}
+  .twk-toggle[data-on="1"] i{transform:translateX(14px)}
+`;
+
+function useTweaks(defaults) {
+  const [values, setValues] = React.useState(defaults);
+  const setTweak = React.useCallback((keyOrEdits, val) => {
+    const edits = typeof keyOrEdits === 'object' && keyOrEdits !== null
+      ? keyOrEdits : { [keyOrEdits]: val };
+    setValues(prev => ({ ...prev, ...edits }));
+    window.parent.postMessage({ type: '__edit_mode_set_keys', edits }, '*');
+  }, []);
+  return [values, setTweak];
+}
+
+function TweaksPanel({ title = 'Tweaks', children }) {
+  const [open, setOpen] = React.useState(false);
+  const dragRef = React.useRef(null);
+  const posRef = React.useRef({ x: 16, y: 16 });
+
+  React.useEffect(() => {
+    const onMsg = (e) => {
+      if (e?.data?.type === '__activate_edit_mode') setOpen(true);
+      else if (e?.data?.type === '__deactivate_edit_mode') setOpen(false);
+    };
+    window.addEventListener('message', onMsg);
+    window.parent.postMessage({ type: '__edit_mode_available' }, '*');
+    return () => window.removeEventListener('message', onMsg);
+  }, []);
+
+  const dismiss = () => {
+    setOpen(false);
+    window.parent.postMessage({ type: '__edit_mode_dismissed' }, '*');
+  };
+
+  const onDragStart = (e) => {
+    const panel = dragRef.current;
+    if (!panel) return;
+    const r = panel.getBoundingClientRect();
+    const sx = e.clientX, sy = e.clientY;
+    const sr = window.innerWidth - r.right, sb = window.innerHeight - r.bottom;
+    const move = (ev) => {
+      posRef.current = { x: sr - (ev.clientX - sx), y: sb - (ev.clientY - sy) };
+      panel.style.right = posRef.current.x + 'px';
+      panel.style.bottom = posRef.current.y + 'px';
+    };
+    const up = () => { window.removeEventListener('mousemove', move); window.removeEventListener('mouseup', up); };
+    window.addEventListener('mousemove', move);
+    window.addEventListener('mouseup', up);
+  };
+
+  if (!open) return null;
+  return (
+    <>
+      <style>{__TWEAKS_STYLE}</style>
+      <div ref={dragRef} className="twk-panel" style={{ right: posRef.current.x, bottom: posRef.current.y }}>
+        <div className="twk-hd" onMouseDown={onDragStart}>
+          <b>{title}</b>
+          <button className="twk-x" onMouseDown={e => e.stopPropagation()} onClick={dismiss}>✕</button>
+        </div>
+        <div className="twk-body">{children}</div>
+      </div>
+    </>
+  );
+}
+
+function TweakSection({ label, children }) {
+  return (<><div className="twk-sect">{label}</div>{children}</>);
+}
+
+function TweakSlider({ label, value, min = 0, max = 100, step = 1, unit = '', onChange }) {
+  return (
+    <div className="twk-row">
+      <div className="twk-lbl"><span>{label}</span><span className="twk-val">{value}{unit}</span></div>
+      <input type="range" className="twk-slider" min={min} max={max} step={step}
+             value={value} onChange={e => onChange(Number(e.target.value))} />
+    </div>
+  );
+}
+
+function TweakToggle({ label, value, onChange }) {
+  return (
+    <div className="twk-row twk-row-h">
+      <div className="twk-lbl"><span>{label}</span></div>
+      <button type="button" className="twk-toggle" data-on={value ? '1' : '0'}
+              onClick={() => onChange(!value)}><i /></button>
+    </div>
+  );
+}
+
+function TweakSelect({ label, value, options, onChange }) {
+  return (
+    <div className="twk-row">
+      <div className="twk-lbl"><span>{label}</span></div>
+      <select className="twk-field" value={value} onChange={e => onChange(e.target.value)}>
+        {options.map(o => <option key={o} value={o}>{o}</option>)}
+      </select>
+    </div>
+  );
+}
+
+// ── App ─────────────────────────────────────────────────────────────────────
+const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+  "primaryHue": 255,
+  "accentHue": 55,
+  "cornerRadius": 14,
+  "fontChoice": "DM Sans",
+  "showAnnotations": true
+}/*EDITMODE-END*/;
+
+function App() {
+  const [tweaks, setTweak] = useTweaks(TWEAK_DEFAULTS);
+
+  React.useEffect(() => {
+    const root = document.documentElement;
+    root.style.setProperty('--primary',     `oklch(46% 0.12 ${tweaks.primaryHue})`);
+    root.style.setProperty('--primary-dk',  `oklch(36% 0.12 ${tweaks.primaryHue})`);
+    root.style.setProperty('--primary-lt',  `oklch(92% 0.06 ${tweaks.primaryHue})`);
+    root.style.setProperty('--primary-mid', `oklch(78% 0.08 ${tweaks.primaryHue})`);
+    root.style.setProperty('--accent',      `oklch(66% 0.14 ${tweaks.accentHue})`);
+    root.style.setProperty('--accent-lt',   `oklch(95% 0.06 ${tweaks.accentHue})`);
+    root.style.setProperty('--r',           `${tweaks.cornerRadius}px`);
+    root.style.setProperty('--font-sans',   `'${tweaks.fontChoice}', -apple-system, sans-serif`);
+    document.querySelectorAll('.annotation').forEach(el => {
+      el.style.display = tweaks.showAnnotations ? '' : 'none';
+    });
+  }, [tweaks]);
+
+  return (
+    <TweaksPanel>
+      <TweakSection label="Brand">
+        <TweakSlider label="Primary hue" min={200} max={320} step={5} value={tweaks.primaryHue} onChange={v => setTweak('primaryHue', v)} />
+        <TweakSlider label="Accent hue"  min={20}  max={120} step={5} value={tweaks.accentHue}  onChange={v => setTweak('accentHue', v)} />
+      </TweakSection>
+      <TweakSection label="Shape">
+        <TweakSlider label="Corner radius" min={4} max={24} step={2} value={tweaks.cornerRadius} onChange={v => setTweak('cornerRadius', v)} />
+      </TweakSection>
+      <TweakSection label="Typography">
+        <TweakSelect label="Font" options={['DM Sans','IBM Plex Sans','Outfit','Nunito','Helvetica Neue']}
+          value={tweaks.fontChoice} onChange={v => setTweak('fontChoice', v)} />
+      </TweakSection>
+      <TweakSection label="Review">
+        <TweakToggle label="Show annotations" value={tweaks.showAnnotations} onChange={v => setTweak('showAnnotations', v)} />
+      </TweakSection>
+    </TweaksPanel>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('tweaks-root')).render(<App />);
+</script>
+
+<div id="tweaks-root"></div>
+
+</body>
+</html>

@@ -1,3 +1,4 @@
+import re
 import random
 from flask import Blueprint, jsonify, request, render_template, abort
 from .db import get_db
@@ -74,11 +75,13 @@ def list_entries():
 @bp.route('/api/entries/<int:entry_id>')
 def get_entry(entry_id):
     db = get_db()
-    row = db.execute("SELECT * FROM entries WHERE id = ?", (entry_id,)).fetchone()
-    db.close()
-    if not row:
-        abort(404)
-    return jsonify(dict(row))
+    try:
+        row = db.execute("SELECT * FROM entries WHERE id = ?", (entry_id,)).fetchone()
+        if not row:
+            abort(404)
+        return jsonify(dict(row))
+    finally:
+        db.close()
 
 
 @bp.route('/api/entries', methods=['POST'])
@@ -107,25 +110,25 @@ def create_entry():
 def update_entry(entry_id):
     data = request.get_json(force=True)
     db = get_db()
-    row = db.execute("SELECT * FROM entries WHERE id = ?", (entry_id,)).fetchone()
-    if not row:
+    try:
+        row = db.execute("SELECT * FROM entries WHERE id = ?", (entry_id,)).fetchone()
+        if not row:
+            abort(404)
+        fields = {**dict(row), **{k: v for k, v in data.items()
+                                   if k in ('raw','lemma','word_type','gender','register',
+                                            'language','category','level','favorite')}}
+        db.execute(
+            """UPDATE entries SET raw=?, lemma=?, word_type=?, gender=?, register=?,
+               language=?, category=?, level=?, favorite=? WHERE id=?""",
+            (fields['raw'], fields['lemma'], fields['word_type'], fields['gender'],
+             fields['register'], fields['language'], fields['category'],
+             int(fields['level']), int(fields['favorite']), entry_id)
+        )
+        db.commit()
+        row = db.execute("SELECT * FROM entries WHERE id = ?", (entry_id,)).fetchone()
+        return jsonify(dict(row))
+    finally:
         db.close()
-        abort(404)
-
-    fields = {**dict(row), **{k: v for k, v in data.items()
-                               if k in ('raw','lemma','word_type','gender','register',
-                                        'language','category','level','favorite')}}
-    db.execute(
-        """UPDATE entries SET raw=?, lemma=?, word_type=?, gender=?, register=?,
-           language=?, category=?, level=?, favorite=? WHERE id=?""",
-        (fields['raw'], fields['lemma'], fields['word_type'], fields['gender'],
-         fields['register'], fields['language'], fields['category'],
-         int(fields['level']), int(fields['favorite']), entry_id)
-    )
-    db.commit()
-    row = db.execute("SELECT * FROM entries WHERE id = ?", (entry_id,)).fetchone()
-    db.close()
-    return jsonify(dict(row))
 
 
 @bp.route('/api/entries/<int:entry_id>/answer', methods=['POST'])
@@ -134,36 +137,36 @@ def record_answer(entry_id):
     correct = bool(data.get('correct', False))
 
     db = get_db()
-    row = db.execute("SELECT level, times_tested, times_correct FROM entries WHERE id = ?", (entry_id,)).fetchone()
-    if not row:
+    try:
+        row = db.execute("SELECT level, times_tested, times_correct FROM entries WHERE id = ?", (entry_id,)).fetchone()
+        if not row:
+            abort(404)
+        new_tested  = row['times_tested'] + 1
+        new_correct = row['times_correct'] + (1 if correct else 0)
+        new_level   = min(row['level'] + 1, 5) if correct else row['level']
+        db.execute(
+            "UPDATE entries SET times_tested=?, times_correct=?, level=? WHERE id=?",
+            (new_tested, new_correct, new_level, entry_id)
+        )
+        db.commit()
+        row = db.execute("SELECT * FROM entries WHERE id = ?", (entry_id,)).fetchone()
+        return jsonify(dict(row))
+    finally:
         db.close()
-        abort(404)
-
-    new_tested  = row['times_tested'] + 1
-    new_correct = row['times_correct'] + (1 if correct else 0)
-    new_level   = min(row['level'] + 1, 5) if correct else row['level']
-
-    db.execute(
-        "UPDATE entries SET times_tested=?, times_correct=?, level=? WHERE id=?",
-        (new_tested, new_correct, new_level, entry_id)
-    )
-    db.commit()
-    row = db.execute("SELECT * FROM entries WHERE id = ?", (entry_id,)).fetchone()
-    db.close()
-    return jsonify(dict(row))
 
 
 @bp.route('/api/entries/<int:entry_id>', methods=['DELETE'])
 def delete_entry(entry_id):
     db = get_db()
-    row = db.execute("SELECT id FROM entries WHERE id = ?", (entry_id,)).fetchone()
-    if not row:
+    try:
+        row = db.execute("SELECT id FROM entries WHERE id = ?", (entry_id,)).fetchone()
+        if not row:
+            abort(404)
+        db.execute("DELETE FROM entries WHERE id = ?", (entry_id,))
+        db.commit()
+        return '', 204
+    finally:
         db.close()
-        abort(404)
-    db.execute("DELETE FROM entries WHERE id = ?", (entry_id,))
-    db.commit()
-    db.close()
-    return '', 204
 
 
 # ── Languages & categories ────────────────────────────────────────────────────
@@ -249,7 +252,6 @@ def import_entries():
             word_type = 'expression'
 
         # Register from word-level (...)
-        import re
         register = None
         m = re.search(r'\[(?:m|f|m/f|v|adj|adv|expr)\]\s*\((\w+)\)', raw)
         if m:
@@ -300,62 +302,65 @@ def create_lesson():
 def update_lesson(lesson_id):
     data = request.get_json(force=True)
     db = get_db()
-    row = db.execute("SELECT * FROM lessons WHERE id = ?", (lesson_id,)).fetchone()
-    if not row:
+    try:
+        row = db.execute("SELECT * FROM lessons WHERE id = ?", (lesson_id,)).fetchone()
+        if not row:
+            abort(404)
+        fields = {**dict(row), **{k: v for k, v in data.items()
+                                   if k in ('name','language','category','levels','amount','direction','repeat_all')}}
+        db.execute(
+            """UPDATE lessons SET name=?, language=?, category=?, levels=?, amount=?, direction=?, repeat_all=?
+               WHERE id=?""",
+            (fields['name'], fields['language'], fields['category'], fields['levels'],
+             int(fields['amount']), fields['direction'], int(fields['repeat_all']), lesson_id)
+        )
+        db.commit()
+        row = db.execute("SELECT * FROM lessons WHERE id = ?", (lesson_id,)).fetchone()
+        return jsonify(dict(row))
+    finally:
         db.close()
-        abort(404)
-    fields = {**dict(row), **{k: v for k, v in data.items()
-                               if k in ('name','language','category','levels','amount','direction','repeat_all')}}
-    db.execute(
-        """UPDATE lessons SET name=?, language=?, category=?, levels=?, amount=?, direction=?, repeat_all=?
-           WHERE id=?""",
-        (fields['name'], fields['language'], fields['category'], fields['levels'],
-         int(fields['amount']), fields['direction'], int(fields['repeat_all']), lesson_id)
-    )
-    db.commit()
-    row = db.execute("SELECT * FROM lessons WHERE id = ?", (lesson_id,)).fetchone()
-    db.close()
-    return jsonify(dict(row))
 
 
 @bp.route('/api/lessons/<int:lesson_id>', methods=['DELETE'])
 def delete_lesson(lesson_id):
     db = get_db()
-    row = db.execute("SELECT id FROM lessons WHERE id = ?", (lesson_id,)).fetchone()
-    if not row:
+    try:
+        row = db.execute("SELECT id FROM lessons WHERE id = ?", (lesson_id,)).fetchone()
+        if not row:
+            abort(404)
+        db.execute("DELETE FROM lessons WHERE id = ?", (lesson_id,))
+        db.commit()
+        return '', 204
+    finally:
         db.close()
-        abort(404)
-    db.execute("DELETE FROM lessons WHERE id = ?", (lesson_id,))
-    db.commit()
-    db.close()
-    return '', 204
 
 
 @bp.route('/api/lessons/<int:lesson_id>/start')
 def start_lesson(lesson_id):
     db = get_db()
-    lesson = db.execute("SELECT * FROM lessons WHERE id = ?", (lesson_id,)).fetchone()
-    if not lesson:
+    try:
+        row = db.execute("SELECT * FROM lessons WHERE id = ?", (lesson_id,)).fetchone()
+        if not row:
+            abort(404)
+        lesson = dict(row)
+
+        sql = "SELECT * FROM entries WHERE 1=1"
+        params = []
+        if lesson['language']:
+            sql += " AND language = ?"
+            params.append(lesson['language'])
+        if lesson['category']:
+            sql += " AND category = ?"
+            params.append(lesson['category'])
+        levels = [x.strip() for x in lesson['levels'].split(',') if x.strip().isdigit()]
+        if levels:
+            placeholders = ','.join('?' * len(levels))
+            sql += f" AND level IN ({placeholders})"
+            params.extend([int(l) for l in levels])
+
+        rows = db.execute(sql, params).fetchall()
+    finally:
         db.close()
-        abort(404)
-    lesson = dict(lesson)
-
-    sql = "SELECT * FROM entries WHERE 1=1"
-    params = []
-    if lesson['language']:
-        sql += " AND language = ?"
-        params.append(lesson['language'])
-    if lesson['category']:
-        sql += " AND category = ?"
-        params.append(lesson['category'])
-    levels = [x.strip() for x in lesson['levels'].split(',') if x.strip().isdigit()]
-    if levels:
-        placeholders = ','.join('?' * len(levels))
-        sql += f" AND level IN ({placeholders})"
-        params.extend(levels)
-
-    rows = db.execute(sql, params).fetchall()
-    db.close()
 
     entries = [dict(r) for r in rows]
     random.shuffle(entries)
